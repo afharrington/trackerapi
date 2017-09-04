@@ -3,10 +3,11 @@ const Schema = mongoose.Schema;
 const bcrypt = require('bcrypt-nodejs');
 
 const Admin = new Schema({
-  playerIds: [],
-  profileIds: [],
-  firstName: { type: String },
-  lastName: { type: String },
+  player_ids: [],
+  profiles: [],
+  tile_profiles: [],
+  first_name: { type: String },
+  last_name: { type: String },
   email: { type: String, unique: true, lowercase: true },
   password: { type: String },
   created_date: { type: Date, default: Date.now }

@@ -37,20 +37,18 @@ module.exports = function(app) {
   app.put('/admin/player/:playerId', requireAdminAuth, admin.update_player); // edit player details
   app.delete('/admin/player/:playerId', requireAdminAuth, admin.delete_player);
 
-//   app.post('/admin/profile', requireAdminAuth, admin.create_profile); // create a new profile, can pass in tile profile Ids
-//
-//   app.get('/admin/profile/:profileId'), requireAdminAuth, admin.get_profile); // get profile info
-//   app.put('/admin/profile/:profileId', requireAdminAuth, admin.update_profile); // edit profile details
-//   app.put('/admin/profile/:profileId/remove', requireAdminAuth, admin.remove_profile); // this will dissaociate the profile from the admin but will not delete the profile itself
-//
-//   app.post('/admin/tileProfile', requireAdminAuth, admin.create_tile_profile); // create a new tile profile, can pass in settings
-//
-//   app.get('/admin/tileProfile/:tileProfileId', requireAdminAuth, admin.get_tile_profile); // get tile profile info
-//   app.put('/admin/tileProfile/:tileProfileId', requireAdminAuth, admin.update_tile_profile); // edit tile settings
-//   app.put('/admin/tileProfile/:tileProfileId/remove', requireAdminAuth, admin.remove_tile_profile);
-//
-//   // PLAYER ROUTES ===========================================================>>
-//
+  app.post('/admin/profile', requireAdminAuth, admin.create_profile); // create a new profile, can pass in tile profile Ids
+  app.get('/admin/profile/:profileId', requireAdminAuth, admin.get_profile); // get profile info
+  app.put('/admin/profile/:profileId', requireAdminAuth, admin.update_profile); // edit profile details
+  app.delete('/admin/profile/:profileId', requireAdminAuth, admin.delete_profile);
+
+  app.post('/admin/profile/:profileId', requireAdminAuth, admin.create_tile_profile);
+  app.get('/admin/profile/:profileId/tileprofile/:tileProfileId', requireAdminAuth, admin.get_tile_profile); // get tile profile info
+  app.put('/admin/profile/:profileId/tileprofile/:tileProfileId', requireAdminAuth, admin.update_tile_profile); // edit tile settings
+  app.delete('/admin/profile/:profileId/tileprofile/:tileProfileId', requireAdminAuth, admin.delete_tile_profile);
+
+// PLAYER ROUTES ===========================================================>>
+
 //   app.get('/player', requirePlayerAuth, player.get_player_dashboard); // get general player info
 //
 //   app.get('/player/tiles', requirePlayerAuth, player.get_all_tiles); // will get all the player's tiles - this will also generate tiles based on the profile if they don't already exist

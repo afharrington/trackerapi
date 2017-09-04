@@ -3,16 +3,16 @@ const Schema = mongoose.Schema;
 const bcrypt = require('bcrypt-nodejs');
 
 const Player = new Schema({
-  firstName: { type: String },
-  lastName: { type: String },
+  first_name: { type: String },
+  last_name: { type: String },
   email: { type: String, unique: true, lowercase: true },
   password: { type: String },
   mobile: { type: String },
   sport: { type: String, lowercase: true },
-  signupDate: { type: Date },
-  adminId: { type: String }, // admin associated with account
-  profileId: { type: String }, // profile assigned to them
-  tileIds: [], // specific tiles associated with individual player
+  signup_date: { type: Date },
+  admin_id: { type: String }, // admin associated with account
+  profile_id: { type: String }, // profile assigned to them
+  tile_ids: [], // specific tiles associated with individual player
   created_date: { type: Date, default: Date.now }
 });
 
