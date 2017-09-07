@@ -26,5 +26,4 @@ describe('Reading admins out of the database', () => {
         done();
       });
   });
-
 });

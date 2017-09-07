@@ -1,9 +1,9 @@
-const auth = require("./controllers/authController");
-const admin = require("./controllers/adminController");
-const player = require("./controllers/playerController");
-// const cors = require("cors");
+const auth = require("../controllers/auth_controller");
+const admin = require("../controllers/admin_controller");
+const player = require("../controllers/player_controller");
+const test = require('../controllers/test_controller');
 
-const passportService = require("./services/passport");
+const passportService = require("../services/passport");
 const passport = require("passport");
 
 const requirePlayerLogin = passport.authenticate('playerLocal', { session: false });
@@ -13,15 +13,10 @@ const requireAdminAuth = passport.authenticate('adminJwt', { session: false });
 
 module.exports = function(app) {
 
-  // Handle CORS
-  app.use(function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
-    next();
-  });
-
-  // app.use(cors());
+  // TEST ROUTES
+  app.post('/test', test.create);
+  app.put('/test/:id', test.edit);
+  app.delete('/test/:id', test.delete);
 
   // AUTHENTICATION ROUTES ==================================================>>
 

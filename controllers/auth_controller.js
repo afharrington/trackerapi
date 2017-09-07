@@ -44,7 +44,7 @@ exports.admin_signup = function(req, res, next) {
 
     admin.save(function(err){
       if (err) { return next(err); }
-      res.json({ token: tokenForUser(admin), name: admin.first_name });
+      res.send({ token: tokenForUser(admin), name: admin.first_name });
     });
   });
 }

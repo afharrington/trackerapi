@@ -3,7 +3,7 @@ const Admin = require('../models/AdminModel');
 const Player = require('../models/PlayerModel');
 const Profile = require('../models/ProfileModel');
 
-describe('Associatons', () => {
+describe('Associations', () => {
   let joe, player, profile;
 
   beforeEach((done) => {
