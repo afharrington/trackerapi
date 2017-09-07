@@ -1,24 +1,16 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const TileProfileSchema = require('./TileProfileSchema');
 
-// A profile is a collection of tile profile ids
-const TileProfile = new Schema({
-  tile_name: { type: String },
-  mode: { type: String, required: true, default: "continuous" },
-  continuous_hours: { type: Number, default: 1 },
-  continuous_days: { type: Number, default: 2 },
-  goal_hours: { type: Number, default: null },
-  goal_cycle: { type: String, default: null },
-  created_date: { type: Date, default: Date.now },
-});
+// * Profiles are created by, and linked to, individual admin accounts
+// * A profile acts as a "blueprint" and contains a set of tiles with pre-defined settings
+// * Profiles are assigned to individual players linked to that admin's account
 
-const Profile = new Schema({
+const ProfileModel = new Schema({
   profile_name: { type: String, lowercase: true },
-  admin_id: { type: String },
-  tile_profiles: [TileProfile],
+  tile_profiles: [TileProfileSchema],
   created_date: { type: Date, default: Date.now },
 });
 
 
-
-module.exports = mongoose.model("Profile", Profile);
+module.exports = mongoose.model('Profile', ProfileModel);

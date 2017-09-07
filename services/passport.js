@@ -3,8 +3,8 @@ const JwtStrategy = require('passport-jwt').Strategy;
 const ExtractJwt = require('passport-jwt').ExtractJwt;
 const LocalStrategy = require('passport-local');
 
-const Admin = require('../models/adminModel');
-const Player = require('../models/playerModel');
+const Admin = require('../models/AdminModel');
+const Player = require('../models/PlayerModel');
 const config = require('../config/keys.js');
 
 const localOptions = { usernameField: 'email' };
@@ -23,7 +23,7 @@ passport.use('playerLocal', new LocalStrategy(localOptions, function(email, pass
     // If player does not exist, returns false
     if (!player) { return done(null, false); }
 
-    Player.comparePassword(password, function(err, isMatch){
+    player.comparePassword(password, function(err, isMatch){
       if (err) { return done(err);  }
       if (!isMatch) { return done(null, false); }
       return done(null, player);

@@ -1,8 +1,11 @@
-var mongoose = require("mongoose");
-var Schema = mongoose.Schema;
+const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
 
-// A tile profile is a tile with settings
-var TileProfile = new Schema({
+// * Profiles contain an array of TileProfiles
+// * TileProfiles contain tile settings that will be applied to a matching tile
+//   in each individual player's account
+
+const TileProfileSchema = new Schema({
   tile_name: { type: String },
   mode: { type: String, required: true, default: "continuous" },
   continuous_hours: { type: Number, default: 1 },
@@ -12,4 +15,4 @@ var TileProfile = new Schema({
   created_date: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model("TileProfile", TileProfile);
+module.exports = TileProfileSchema;

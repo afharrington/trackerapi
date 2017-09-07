@@ -3,13 +3,22 @@ const Schema = mongoose.Schema;
 const bcrypt = require('bcrypt-nodejs');
 
 const Admin = new Schema({
-  player_ids: [],
-  profiles: [],
-  tile_profiles: [],
-  first_name: { type: String },
-  last_name: { type: String },
-  email: { type: String, unique: true, lowercase: true },
+  first_name: { type: String, required: [true, 'First name is required'] },
+  last_name: String,
+  email: { type: String, lowercase: true }, 
   password: { type: String },
+
+  // Each admin has a an array of players and a reference to Player collection
+  players: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Player'
+  }],
+  // Each admin has a an array of profiles and a reference to Profile collection
+  profiles: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Profile'
+  }],
+
   created_date: { type: Date, default: Date.now }
 });
 

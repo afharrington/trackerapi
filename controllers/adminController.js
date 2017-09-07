@@ -1,13 +1,19 @@
 const mongoose = require("mongoose");
 
-const Admin = require("../models/adminModel.js");
-const Player = require("../models/playerModel.js");
-const Profile = require("../models/profileModel.js");
-const TileProfile = require("../models/tileProfileModel.js");
+const Admin = require("../models/AdminModel.js");
+const Player = require("../models/PlayerModel.js");
+const Profile = require("../models/ProfileModel.js");
+const TileSet = require("../models/TileSetSchema.js");
+const TileProfile = require("../models/TileProfileSchema.js");
+const Tile = require("../models/TileSchema.js");
 
 const jwt = require('jwt-simple');
 const config = require('../config/keys.js');
 const ExtractJwt = require('passport-jwt').ExtractJwt;
+
+// When admins update a profile, need to have those changes propagate among all
+// players using that profile
+
 
 // TEST ACCOUNT
 // Anna
@@ -36,41 +42,90 @@ exports.get_admin_dashboard = function(req, res) {
 
 // PLAYER FUNCTIONS =========================================================>>
 
+function generateTileSets(profileIds, callback) {
+  profileIds.forEach((profileId) => {
+    Profile.findById({_id: profileId}, function(err, profile) {
+      console.log("finding profile");
+      if (err) { return next(err); }
+    })
+    .then((profile) => {
+      console.log("found:", profile);
+    });
+  }, () => {
+    console.log("callback");
+  });
+}
+
+
+// Creates a tile set for a single profile id
+function generateTileSet(profileIds, callback) {
+  let tileSets = profileIds.map((profileId) => {
+    Profile.findById({ _id: profileId }, function(err, profile) {
+      if (err) { return next(err); }
+
+      let newTileSet = {
+        tile_set_name: profile.profile_name,
+        tile_set_profile: profileId,
+        tiles: []
+      };
+
+      newTileSet.tiles = profile.tile_profiles.map(tileProfile => {
+        const newTile = {
+          tile_profile_id: tileProfile._id,
+          tile_name: tileProfile.tile_name,
+          mode: tileProfile.mode,
+          goal_cycle: tileProfile.goal_cycle,
+          goal_hours: tileProfile.goal_hours,
+          continuous_days: tileProfile.continuous_days,
+          continuous_hours: tileProfile.continuous_hours
+        };
+        return newTile;
+      });
+      // console.log("about to call back");
+      // callback(newTileSet);
+    });
+    return newTileSet;
+  });
+console.log(tileSets);
+}
+
+
 // POST admin/player
 exports.add_player = function(req, res, next) {
   const header = req.headers.authorization.slice(4);
   const decoded = jwt.decode(header, config.secret);
 
-  const first_name = req.body.firstName;
-  const last_name = req.body.lastName;
-  const email = req.body.email;
-  const password = req.body.password;
-  const mobile = req.body.mobile;
-  const sport = req.body.sport;
-  const profile_id = req.body.profileId;
-  const admin_id = decoded.sub;
-
-  Player.findOne({ email: email }, function(err, existingUser) {
+  Player.findOne({ email: req.body.email }, function(err, existingUser) {
     if (err) { return next(err); }
     if (existingUser) {
       return res.status(422).send({ error: 'A player with this email address already exists'});
     }
 
     const player = new Player({
-      first_name,
-      last_name,
-      email,
-      password,
-      mobile,
-      sport,
-      profile_id,
-      admin_id
+      first_name: req.body.firstName,
+      last_name: req.body.lastName,
+      email: req.body.email,
+      password: req.body.password,
+      mobile: req.body.mobile,
+      sport: req.body.sport,
+      signup_date: req.body.signupDate,
+      admin_id: decoded.sub,
+      profile_ids: req.body.profileIds, // this will be an array of profile ids
+      tileSets: [] // this will be an array of tileSet objects
     });
+
+    // PROBLEM:
+    if (req.body.profileIds) {
+      generateTileSets(req.body.profileIds, (tileSets) => {
+        console.log(tileSets);
+      });
+    }
 
     player.save(function(err){
       if (err) { return next(err); }
       res.json(player);
     });
+
 
     Admin.findById({ _id: decoded.sub }, function(err, admin) {
       if (err) { return send(err); }
@@ -103,7 +158,7 @@ exports.get_player = function(req, res, next) {
       sport: player.sport,
       signupDate: player.signup_Date,
       profileId: player.profile_id,
-      tileIds: player.tile_ids
+      tileSets: player.tileSets
     }
 
     if (player.admin_id == decoded.sub) {
@@ -125,21 +180,62 @@ exports.update_player = function(req, res, next) {
       return res.status(422).send({ error: 'Player not found'});
     }
 
-    if (player.admin_id == decoded.sub) {
+    if (player.admin_id !== decoded.sub) {
+      res.send({ error: 'You do not have access to this profile' });
+    } else {
       player.first_name = req.body.firstName ? req.body.firstName : player.first_name;
       player.last_name = req.body.lastName ? req.body.lastName : player.last_name;
       player.email = req.body.email ? req.body.email : player.email;
       player.mobile = req.body.mobile ? req.body.email : player.mobile;
       player.sport = req.body.sport ? req.body.sport : player.sport;
       player.signup_date = req.body.signupDate ? req.body.signupDate : player.signup_date;
-      player.profile_id = req.body.profileId ? req.body.profileId : player.profile_id;
+
+      if (!req.body.profileIds) {
+        player.profileIds = player.profileIds;
+      } else {
+
+        // save profiles that are in the request and not the current player info
+        const newProfiles = req.body.profileIds.filter((reqProfileId) => {
+          return !(player.profile_ids.includes(reqProfileId));
+        })
+
+        // for each new profile
+        newProfiles.forEach((profileId) => {
+
+          // look up the profile and create a matching tile set, add it to the player's tile sets
+          Profile.findById({ _id: profileId })
+          .then((profile) => {
+            const tileSet = {
+              tile_set_name: profile.profile_name,
+              tile_set_profile: req.body.profileId,
+              tiles: []
+            };
+            profile.tile_profiles.forEach(tileProfile => {
+              const tile = {
+                tile_profile_id: tileProfile._id,
+                tile_name: tileProfile.tile_name,
+                mode: tileProfile.mode,
+                goal_cycle: tileProfile.goal_cycle,
+                goal_hours: tileProfile.goal_hours,
+                continuous_days: tileProfile.continuous_days,
+                continuous_hours: tileProfile.continuous_hours
+              };
+              tileSet.tiles = [...tileSet.tiles, tile];
+            });
+            player.tileSets = [...player.tileSets, tileSet];
+          })
+          .catch(function(err) {
+            console.log(err);
+          })
+        });
+      }
+
+      console.log(player.tileSets);
 
       player.save(function(err){
         if (err) { return next(err); }
         res.json(player);
       });
-    } else {
-      res.send('You do not have access to this player account');
     }
   });
 }
@@ -171,16 +267,16 @@ exports.create_profile = function(req, res, next) {
 
   Admin.findById({_id: decoded.sub }, function(err, admin) {
     if (err) { return next(err); }
-    let error;
-    if (admin.tile_profiles.length > 0) {
-      admin.tile_profiles.forEach(profile => {
+    let error = false;
+
+    if (admin.profiles.length > 0) {
+      admin.profiles.forEach(profile => {
         if (profile.profile_name == req.body.profileName) {
           error = true;
         }
       });
     }
 
-    // change this later to validate client side
     if (!error) {
       const newProfile = new Profile({
         profile_name: req.body.profileName,
@@ -196,7 +292,7 @@ exports.create_profile = function(req, res, next) {
         if (err) { return next(err); }
         res.json(newProfile);
       });
-    } else {
+    } else if (error) {
       res.status(422).send({ error: 'A profile with this name already exists'});
     }
   });
@@ -279,14 +375,14 @@ exports.create_tile_profile = function(req, res, next) {
     if (err) { return next(err); }
 
     if (profile.admin_id == decoded.sub) {
-      const tile = new TileProfile({
+      const tile = {
         tile_name: req.body.tileName,
         mode: req.body.mode,
         continuous_hours: req.body.continuousHours,
         continuous_days: req.body.continuousDays,
         goal_hours: req.body.goalHours,
         goal_cycle: req.body.goalCycle
-      });
+      };
 
       profile.tile_profiles = [...profile.tile_profiles, tile];
 

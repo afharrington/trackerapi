@@ -1,18 +1,28 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const TileSetSchema = require('./TileSetSchema');
 const bcrypt = require('bcrypt-nodejs');
 
+// * Players can be assigned a list of profile_ids which will be used to populate
+//   their tileSets when the admin adds the player (or updates the player's profile_ids)
+
 const Player = new Schema({
-  first_name: { type: String },
-  last_name: { type: String },
+  first_name: String,
+  last_name: String,
   email: { type: String, unique: true, lowercase: true },
-  password: { type: String },
-  mobile: { type: String },
+  password: String,
+  mobile: String,
   sport: { type: String, lowercase: true },
-  signup_date: { type: Date },
-  admin_id: { type: String }, // admin associated with account
-  profile_id: { type: String }, // profile assigned to them
-  tile_ids: [], // specific tiles associated with individual player
+  signup_date: Date,
+  admin: { // not sure if this is necessary
+    type: Schema.Types.ObjectId,
+    ref: 'Admin'
+  },
+  profiles: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Profile'
+  }],
+  tileSets: [TileSetSchema],
   created_date: { type: Date, default: Date.now }
 });
 
@@ -38,4 +48,4 @@ Player.methods.comparePassword = function(candidatePassword, callback) {
   });
 }
 
-module.exports = mongoose.model('Player', Player);
+module.exports = mongoose.model("Player", Player);

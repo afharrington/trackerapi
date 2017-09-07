@@ -1,6 +1,6 @@
-var mongoose = require("mongoose");
-var Admin = require("../models/adminModel.js");
-var Player = require("../models/playerModel.js");
+const mongoose = require("mongoose");
+const Admin = require("../models/AdminModel.js");
+const Player = require("../models/PlayerModel.js");
 
 const jwt = require('jwt-simple');
 const config = require('../config/keys.js');
