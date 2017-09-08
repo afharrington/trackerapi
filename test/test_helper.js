@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-// executed once for all tests
 before((done) => {
   mongoose.connect('mongodb://localhost/threeup_test');
   const db = mongoose.connection;
@@ -11,16 +10,16 @@ before((done) => {
     });
 });
 
-// After collection has been dropped, call done() and run
-// the next test
 beforeEach((done) => {
-  const { admins, profiles, players, people } = mongoose.connection.collections;
+  const { admins, users, regimens, tiles, people } = mongoose.connection.collections;
   admins.drop(() => {
-    players.drop(() => {
-      profiles.drop(() => {
-        people.drop(() => {
-          done();
-        })
+    users.drop(() => {
+      regimens.drop(() => {
+        tiles.drop(() => {
+          people.drop(() => {
+            done();
+          });
+        });
       });
     });
   });

@@ -1,8 +1,8 @@
 const assert = require('assert');
-const Profile = require('../models/ProfileModel');
+const Profile = require('../models/Regimen/regimen_model');
 
-describe('Profile subdocuments', () => {
-  it('can create a tile profile subdocument to a new profile', (done) => {
+describe('Regimen subdocuments', () => {
+  it('can a tile profile subdocument to a new profile', (done) => {
     const profile = new Profile({
       profile_name: 'profile1',
       tile_profiles: [{ tile_name: 'tile1'}]
