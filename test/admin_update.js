@@ -1,11 +1,11 @@
 const assert = require('assert');
 const Admin = require('../models/Admin/admin_model');
 
-describe('Updating records', () => {
+describe('Updating admin record', () => {
   let jane;
 
   beforeEach((done) => {
-    jane = new Admin({ firstName: 'Jane' });
+    jane = new Admin({ firstName: 'jane', email: 'jane@gmail.com', password: 'password' });
     jane.save()
       .then(() => done());
   });
@@ -17,26 +17,26 @@ describe('Updating records', () => {
     .then(() => Admin.find({}))
     .then((admins) => {
       assert(admins.length === 1);
-      assert(admins[0].firstName === 'Janet');
+      assert(admins[0].firstName === 'janet');
       done();
     });
   }
 
   // Use for incremental updates over time
   it('model instance updates with set and save method', (done) => {
-    jane.set('first_name', 'Janet');
+    jane.set('firstName', 'janet');
     assertName(jane.save(), done);
   });
 
   // Use for bulk / instantaneous updates
   it('model instance updates with update method', (done) => {
-    assertName(jane.update({firstName: 'Janet'}), done);
+    assertName(jane.update({firstName: 'janet'}), done);
   });
 
   // Update all records matching criteria
   it('model class updates multiple matching records', (done) => {
       assertName(
-        Admin.update({ firstName: 'Jane' }, { firstName: 'Janet' }),
+        Admin.update({ firstName: 'jane' }, { firstName: 'janet' }),
         done
       );
   });
@@ -44,7 +44,7 @@ describe('Updating records', () => {
   // Update a specific record matching criteria
   it('model class updates a single record', (done) => {
       assertName(
-        Admin.findOneAndUpdate({ firstName: 'Jane' }, { firstName: 'Janet' }),
+        Admin.findOneAndUpdate({ firstName: 'jane' }, { firstName: 'janet' }),
         done
       );
   });
@@ -52,7 +52,7 @@ describe('Updating records', () => {
   // Update a specific record matching id
   it('model class finds a record by id and updates', (done) => {
       assertName(
-        Admin.findByIdAndUpdate(jane._id, { firstName: 'Janet' }),
+        Admin.findByIdAndUpdate(jane._id, { firstName: 'janet' }),
         done
       );
   });

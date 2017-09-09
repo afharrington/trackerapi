@@ -3,10 +3,13 @@ const Schema = mongoose.Schema;
 const bcrypt = require('bcrypt-nodejs');
 
 const adminSchema = new Schema({
-  firstName: { type: String, lowercase: true },
+  firstName: { type: String, lowercase: true, required: [true, 'First name is required']},
   lastName: { type: String, lowercase: true },
-  email: { type: String, lowercase: true },
-  password: { type: String },
+  email: {
+    type: String,
+    lowercase: true,
+    required: [true, 'Email is required'] },
+  password: { type: String, required: true },
   users: [{
     type: Schema.Types.ObjectId,
     ref: 'user'

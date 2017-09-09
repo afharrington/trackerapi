@@ -6,7 +6,6 @@ const entrySchema = require('./entry_schema');
 
 const userTileSchema = new Schema({
   userTileName: String,
-  // Tile (template) used to create this tile
   tile: {
     type: Schema.Types.ObjectId,
     ref: 'tile'
@@ -19,7 +18,7 @@ const userTileSchema = new Schema({
   totalMinutes: { type: Number, default: 0 },
   // color: { type: Number, default: 0 },
   currentCycleStart: { type: Date, default: Date.now },
-  activity: String,
+  activityOptions: [],
   entries: [entrySchema],
   created_date: { type: Date, default: Date.now },
 });

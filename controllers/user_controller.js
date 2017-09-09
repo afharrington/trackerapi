@@ -2,7 +2,8 @@ const mongoose = require("mongoose");
 const jwt = require('jwt-simple');
 const config = require('../config/keys.js');
 const ExtractJwt = require('passport-jwt').ExtractJwt;
-const Player = require("../models/PlayerModel.js");
+
+const User = require('../models/User/user_model');
 
 // Token for Testing:
 // bob@gmail.com/ password
@@ -12,7 +13,6 @@ const Player = require("../models/PlayerModel.js");
 exports.get_player_dashboard = function(req, res) {
   const header = req.headers.authorization.slice(4);
   const decoded = jwt.decode(header, config.secret);
-  console.log("test");
 
   Player.findById({ _id: decoded.sub }, function(err, player) {
     if (err) res.send(err)

@@ -1,5 +1,5 @@
 const assert = require('assert');
-const Player = require('../models/TileSchema');
+const Tile = require('../models/Tile/tile_model');
 
 // virtual types are computed values that can live on the server but do not need to
 // be persisted in the db

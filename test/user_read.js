@@ -5,17 +5,17 @@ describe('Reading users out of the database', () => {
   let joe;
 
   beforeEach((done) => {
-    jason = new User({ firsName: 'Jason' });
-    jim = new User({ firstName: 'Jim' });
-    joe = new User({ firstName: 'Joe' });
-    jordan = new User({ firstName: 'Jordan' });
+    jason = new User({ firstName: 'jason', email: 'jason@gmail.com' });
+    jim = new User({ firstName: 'jim', email: 'jim@gmail.com' });
+    joe = new User({ firstName: 'joe', email: 'joe@gmail.com' });
+    jordan = new User({ firstName: 'jordan', email: 'jordan@gmail.com' });
 
     Promise.all([jason.save(), jim.save(), joe.save(), jordan.save()])
       .then(() => done());
   });
 
   it('finds all players with name Joe', (done) => {
-    User.find({ firstName: 'Joe' })
+    User.find({ firstName: 'joe' })
       .then((users) => {
         assert(users[0]._id.toString() === joe._id.toString());
         done();
@@ -24,8 +24,8 @@ describe('Reading users out of the database', () => {
 
   it('finds a player with a particular id', (done) => {
     User.findOne({ _id: joe._id })
-      .then((player) => {
-        assert(user.firstName === 'Joe');
+      .then((user) => {
+        assert(user.firstName === 'joe');
         done();
       });
   });
@@ -37,7 +37,7 @@ describe('Reading users out of the database', () => {
       .limit(2)
       .then((users) => {
         assert(users.length == 2);
-        assert(players[0].firstName == 'Jim');
+        assert(users[0].firstName == 'jim');
         done();
       })
   });

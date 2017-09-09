@@ -3,8 +3,8 @@ const JwtStrategy = require('passport-jwt').Strategy;
 const ExtractJwt = require('passport-jwt').ExtractJwt;
 const LocalStrategy = require('passport-local');
 
-const Admin = require('../models/AdminModel');
-const Player = require('../models/PlayerModel');
+const Admin = require('../models/Admin/admin_model');
+const User = require('../models/User/user_model');
 const config = require('../config/keys.js');
 
 const localOptions = { usernameField: 'email' };
@@ -14,31 +14,31 @@ const jwtOptions = {
   secretOrKey: config.secret
 };
 
-// PLAYER PASSPORT STRATEGIES ===============================================>>
+// USER PASSPORT STRATEGIES ===============================================>>
 
-// Player login - checks if this player exists and if the password matches the database
-passport.use('playerLocal', new LocalStrategy(localOptions, function(email, password, done) {
-  Player.findOne({email: email}, function(err, player){
+// User login - checks if this user exists and if the password matches the database
+passport.use('userLocal', new LocalStrategy(localOptions, function(email, password, done) {
+  User.findOne({email: email}, function(err, user){
     if (err) { return done(err); }
-    // If player does not exist, returns false
-    if (!player) { return done(null, false); }
+    // If user does not exist, returns false
+    if (!user) { return done(null, false); }
 
-    player.comparePassword(password, function(err, isMatch){
+    user.comparePassword(password, function(err, isMatch){
       if (err) { return done(err);  }
       if (!isMatch) { return done(null, false); }
-      return done(null, player);
+      return done(null, user);
     })
   })
 }));
 
-// Player authentication - checks if id encoded in the token matches a player
-passport.use('playerJwt', new JwtStrategy(jwtOptions, function(payload, done) {
-  Player.findById(payload.sub, function(err, player) {
+// User authentication - checks if id encoded in the token matches a user
+passport.use('userJwt', new JwtStrategy(jwtOptions, function(payload, done) {
+  User.findById(payload.sub, function(err, user) {
     if (err) {
       return done(err, false); }
-    if (player) {
-      done(null, player);
-    // No error, but player does not exist:
+    if (user) {
+      done(null, user);
+    // No error, but user does not exist:
     } else {
       done(null, false);
     }

@@ -1,6 +1,6 @@
-const mongoose = require("mongoose");
-const Admin = require("../models/AdminModel.js");
-const Player = require("../models/PlayerModel.js");
+const mongoose = require('mongoose');
+const Admin = require('../models/Admin/admin_model');
+const User = require('../models/User/user_model');
 
 const jwt = require('jwt-simple');
 const config = require('../config/keys.js');
@@ -12,48 +12,42 @@ function tokenForUser(user) {
   const decoded = jwt.decode(newJwtCode, config.secret);
 }
 
+module.exports = {
+
 // ADMIN AUTHORIZATION =======================================================>
 
-// POST /admin/login
-exports.admin_login = function(req, res, next) {
-  // Admin is already authorized via passport, just send token and admin first name
-  const token = tokenForUser(req.user);
-  res.send({ token: token, name: req.user.first_name } );
-}
+  // POST /admin/login
+  admin_login(req, res, next) {
+    // Admin is already authorized via passport
+    const token = tokenForUser(req.user);
+    res.send({ token: token, email: req.user.email } );
+  },
 
-// POST /admin/signup
-exports.admin_signup = function(req, res, next) {
-  const first_name = req.body.firstName;
-  const last_name = req.body.lastName;
-  const email = req.body.email;
-  const password = req.body.password;
 
-  // Check if admin account already exists for this email, else create a new admin
-  Admin.findOne({ email: email }, function(err, existingUser) {
-    if (err) { return next(err); }
-    if (existingUser) {
-      return res.status(422).send({ error: 'This email address is already in use'});
-    }
+  // POST /admin/new
+  admin_create(req, res, next) {
+    const adminProps = req.body;
 
-    const admin = new Admin({
-      first_name,
-      last_name,
-      email,
-      password
-    });
+    Admin.findOne({ email: adminProps.email })
+      .then((admin) => {
+        if (admin === null) {
+          Admin.create(adminProps)
+            .then(admin => res.send(admin))
+            .catch(next);
+        } else {
+          res.status(409).send('This email is already registered');
+          console.log('send email exists error');
+        }
+      })
+      .catch(next);
+  },
 
-    admin.save(function(err){
-      if (err) { return next(err); }
-      res.send({ token: tokenForUser(admin), name: admin.first_name });
-    });
-  });
-}
+// USER AUTHORIZATION ======================================================>
 
-// PLAYER AUTHORIZATION ======================================================>
-
-// POST /login
-exports.login = function(req, res, next) {
-  // Player is already authorized via passport, just send token and player first name
-  const token = tokenForUser(req.user);
-  res.send({ token: token, name: req.user.first_name } );
+  // POST /login
+  user_login(req, res, next) {
+    // User is already authorized via passport
+    const token = tokenForUser(req.user);
+    res.send({ token: token, email: req.user.email } );
+  }
 }

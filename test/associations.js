@@ -7,62 +7,62 @@ describe('Associations', () => {
   let jane, joe, regimen;
 
   beforeEach((done) => {
-    jane = new Admin({ first_name: 'Joe' });
-    joe = new User ({ first_name: 'Jane' });
-    regimen = new Regimen ({ regimen_name: 'Strength & Fitness' });
+    jane = new Admin({ firstName: 'jane' , email: 'jane@gmail.com', password: 'password'});
+    joe = new User ({ firstName: 'joe', email: 'joe@gmail.com', password: 'password' });
+    regimen = new Regimen ({ regimenName: 'strength & fitness' });
 
     // Add Joe to the collection of users Jane manages
-    joe.users.push(jane);
+    jane.users.push(joe);
     // Add Jane as the admin for Joe's account
-    jane.admin = joe;
+    joe.admin = jane;
 
-    // Add regimen to Joe's collection of profiles (he created)
-    joe.regimens.push(regimen);
-    // Add profile to Jane's collection of profiles (assigned to her)
+    // Add regimen to Jane's list of regimens
     jane.regimens.push(regimen);
+    // Add profile to Joe's list of assigned regimens
+    joe.regimens.push(regimen);
 
     Promise.all([joe.save(), jane.save(), regimen.save()])
       .then(() => done());
   });
 
   it('saves relation between an admin and regimen', (done) => {
-    Admin.findOne({ first_name: 'Jane' })
+    Admin.findOne({ firstName: 'jane' })
       .populate('regimens')
       .then((admin) => {
-        assert(admin.regimens[0].regimenName == 'Strength & Fitness');
+        assert(admin.regimens[0].regimenName == 'strength & fitness');
         done();
       });
   });
 
   it('saves relation between an admin and user', (done) => {
-    Admin.findOne({ firstName: 'Jane' })
+    Admin.findOne({ firstName: 'jane' })
       .populate('users')
       .then((admin) => {
-        assert(admin.users[0].firstName == 'Joe');
+        assert(admin.users[0].firstName == 'joe');
         done();
       });
   });
 
-  it('saves a relation between a player and admin', (done) => {
-    User.findOne({ firstName: 'Joe' })
+  it('saves a relation between a user and admin', (done) => {
+    User.findOne({ firstName: 'joe' })
       .populate('admin')
       .then((user) => {
-        assert(user.admin.firstName == 'Jane');
+        assert(user.admin.firstName == 'jane');
         done();
       });
   });
 
   it('saves a relation between a user and regimen', (done) => {
-    User.findOne({ firstName: 'Joe' })
+    User.findOne({ firstName: 'joe' })
       .populate('regimens')
       .then((user) => {
-        assert(user.regimens[0].regimenName == 'Strength & Fitness');
+        assert(user.regimens[0].regimenName == 'strength & fitness');
         done();
       });
   });
 
   it('saves nested relations', (done) => {
-    Admin.findOne({ first_name: 'Jane' })
+    Admin.findOne({ firstName: 'jane' })
       .populate({
         path: 'users',
         populate: {
@@ -71,9 +71,9 @@ describe('Associations', () => {
         }
       })
       .then((admin) => {
-        assert(admin.firstName == 'Jane');
-        assert(admin.users[0].firstName == 'Joe');
-        assert(admin.users[0].regimens[0].regimenName == 'Strength & Fitness');
+        assert(admin.firstName == 'jane');
+        assert(admin.users[0].firstName == 'joe');
+        assert(admin.users[0].regimens[0].regimenName == 'strength & fitness');
         done();
       })
   });

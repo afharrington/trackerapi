@@ -4,7 +4,7 @@ const Admin = require('../models/Admin/admin_model');
 describe('Creating an admin account', () => {
   it('saves an admin', (done) => {
     const jane = new Admin({
-      firstName: 'Jane',
+      firstName: 'jane',
       email: 'jane@gmail.com',
       password: 'password'
     });
