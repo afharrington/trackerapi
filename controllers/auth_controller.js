@@ -39,6 +39,35 @@ module.exports = {
     }
   },
 
+  
+  // GET /admin
+  get_admin: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+
+    try {
+      let admin = await Admin.findById({ _id: decoded.sub }).populate('regimens');
+      res.status(200).send(admin);
+    } catch(err) {
+      next(err);
+    }
+  },
+
+
+  // PUT /admin
+  update_admin: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const props = req.body;
+
+    try {
+      let updatedAdmin = await Admin.findByIdAndUpdate(decoded.sub, props, {new: true});
+      res.status(200).send(updatedAdmin);
+    } catch(err) {
+      next(err);
+    }
+  },
+
 
 // USER AUTHORIZATION ======================================================>
 

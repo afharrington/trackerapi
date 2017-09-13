@@ -9,12 +9,10 @@ const regimenSchema = new Schema({
   created_date: { type: Date, default: Date.now },
 });
 
-
 regimenSchema.pre('remove', function(next) {
   const regimenToRemove = this;
-  const regimenAdmin = this.adminId;
   const Admin = mongoose.model('admin');
-  Admin.findById({ _id: regimenAdmin })
+  Admin.findById({ _id: this.adminId })
     .then((admin) => {
       admin.regimens = admin.regimens.filter(regimen => regimen == regimenToRemove);
       admin.save()

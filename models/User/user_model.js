@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-const userRegimenSchema = require('./user_regimen_schema');
 const bcrypt = require('bcrypt-nodejs');
 
 const userSchema = new Schema({
@@ -19,7 +18,10 @@ const userSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'regimen'
   }],
-  userRegimens: [userRegimenSchema],
+  userRegimens: [{
+    type: Schema.Types.ObjectId,
+    ref: 'userRegimen'
+  }],
   created_date: { type: Date, default: Date.now }
 });
 

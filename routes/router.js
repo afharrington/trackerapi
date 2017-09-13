@@ -19,21 +19,23 @@ module.exports = function(app) {
   app.delete('/test/:id', test.delete);
 
   // AUTHENICATION ROUTES ===================================================>>
-  // Need to add PUT and DELETE for admin accounts
 
-  app.post('/admin', auth.create_admin); // sign up new admin, then send token
-  app.post('/admin/login', requireAdminLogin, auth.login_admin); // authorize login, then send token
-  app.post('/login', requireUserLogin, auth.login_user); // authorize user login, then send token
+  app.post('/admin', auth.create_admin);
+  app.get('/admin', requireAdminAuth, auth.get_admin);
+  app.put('/admin', requireAdminAuth, auth.update_admin);
+
+  app.post('/admin/login', requireAdminLogin, auth.login_admin);
+  app.post('/login', requireUserLogin, auth.login_user);
 
   // ADMIN ROUTES ===========================================================>>
 
   // Managing user accounts
-  app.get('/admin', requireAdminAuth, admin.get_admin);
+  app.get('/admin/user', requireAdminAuth, admin.get_all_users);
   app.post('/admin/user', requireAdminAuth, admin.create_user);
   app.get('/admin/user/:userId', requireAdminAuth, admin.get_user);
   app.put('/admin/user/:userId', requireAdminAuth, admin.update_user);
   app.delete('/admin/user/:userId', requireAdminAuth, admin.delete_user);
-  app.post('/admin/user/:userId', requireAdminAuth, admin.assign_regimens)
+  app.post('/admin/user/:userId', requireAdminAuth, admin.assign_regimen)
 
   // Managing regimens
   app.get('/admin/regimen', requireAdminAuth, admin.get_all_regimens);
@@ -44,19 +46,25 @@ module.exports = function(app) {
   app.post('/admin/regimen/:regimenId', requireAdminAuth, admin.create_tile);
 
   // Managing tiles
+  app.post('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.add_activity);
   app.put('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.update_tile);
   app.delete('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.delete_tile);
 
-// PLAYER ROUTES ===========================================================>>
+// USER ROUTES ===========================================================>>
 
-  // app.get('/', requireUserAuth, user.get_user);
-// app.get('/player/tiles', requirePlayerAuth, player.get_all_tiles); // will get all the player's tiles - this will also generate tiles based on the profile if they don't already exist
-//
-//   app.get('/player/tiles/:tileId', requirePlayerAuth, player.get_entries); // get entries for a specifc tile
-//   app.post('/player/tiles/:tileId', requirePlayerAuth, player.add_entry); // add an entry to a tile
-//   app.put('/player/tiles/:tileId', requirePlayerAuth, player.update_tile_color); // update a tile's color value
-//
-//   app.delete('/player/tile/:tileId/entry/:entryId', requirePlayerAuth, player.delete_entry); // delete an entry
-//   app.put('/player/tile/:tileId/entry/:entryId', requirePlayerAuth, player.update_entry); // edit an entry
-// };
+  // Managing user account
+  app.get('/', requireUserAuth, user.get_user);
+  app.put('/', requireUserAuth, user.update_user);
+
+  // Accessing all user regimens
+  app.get('/user', requireUserAuth, user.get_regimens);
+
+  // Accessing specific user regimen with tiles
+  app.get('/user/reg/:regId', requireUserAuth, user.get_regimen);
+
+  // Accessing specific user tile with entries
+  app.get('/user/reg/:regId/tile/:tileId', requireUserAuth, user.get_entries);
+  app.post('/user/reg/:regId/tile/:tileId', requireUserAuth, user.add_entry);
+  app.put('/user/reg/:regId/tile/:tileId/entry/:entryId', requireUserAuth, user.update_entry);
+  app.delete('/user/reg/:regId/tile/:tileId/entry/:entryId', requireUserAuth, user.delete_entry);
 }
