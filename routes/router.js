@@ -49,7 +49,7 @@ module.exports = function(app) {
 
 // PLAYER ROUTES ===========================================================>>
 
-  app.get('/', requireUserAuth, user.get_user);
+  // app.get('/', requireUserAuth, user.get_user);
 // app.get('/player/tiles', requirePlayerAuth, player.get_all_tiles); // will get all the player's tiles - this will also generate tiles based on the profile if they don't already exist
 //
 //   app.get('/player/tiles/:tileId', requirePlayerAuth, player.get_entries); // get entries for a specifc tile

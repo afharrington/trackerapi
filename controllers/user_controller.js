@@ -6,7 +6,7 @@ const ExtractJwt = require('passport-jwt').ExtractJwt;
 const User = require('../models/User/user_model');
 
 // GET /
-exports.get_player_dashboard = function(req, res) {
+exports.get_user = function(req, res) {
   const header = req.headers.authorization.slice(4);
   const decoded = jwt.decode(header, config.secret);
 

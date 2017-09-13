@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const jwt = require('jwt-simple');
 const config = require('../config/keys.js');
 const ExtractJwt = require('passport-jwt').ExtractJwt;
-const ObjectID = require("mongodb").ObjectID;
 
 // Mongoose models and schemas
 const Admin = require('../models/Admin/admin_model');
@@ -15,30 +14,27 @@ const UserTile = require('../models/User/user_tile_schema');
 
 // HELPER FUNCTIONS =========================================================>>
 
-function generateUserRegimens(regimensArray) {
-  userRegimens = [];
-  regimensArray.forEach(regimen => {
-      let userRegimen = {
-        userRegimenName: regimen.regimenName,
-        userTiles: []
-      };
-
-      if(regimen.tiles) {
-        regimen.tiles.forEach(tile => {
-          let userTile = {
-            userTileName: tile.tileName,
-            mode: tile.mode,
-            continuousHours: tile.continuousHours,
-            continuousDays: tile.continuousDays,
-            goalHours: tile.goalHours,
-            activityOptions: tile.activityOptions
-          }
-          userRegimen.userTiles.push(userTile);
-        });
-      userRegimens.push(userRegimen);
+function generateUserRegimen(regimen) {
+  const { regimenName, tiles } = regimen;
+  let userRegimen = {
+    fromRegimen: regimen,
+    userRegimenName: regimenName,
+    userTiles: []
+  }
+  if (tiles) {
+    tiles.forEach( tile => {
+      let userTile = {
+        userTileName: tile.tileName,
+        mode: tile.mode,
+        continuousHours: tile.continuousHours,
+        continuousDays: tile.continuousDays,
+        goalHours: tile.goalHours,
+        activityOptions: tile.activityOptions
       }
-  });
-  return userRegimens;
+      userRegimen.userTiles.push(userTile);
+    })
+  }
+  return userRegimen;
 };
 
 module.exports = {
@@ -101,7 +97,6 @@ module.exports = {
     } catch(err) {
       next(err);
     }
-
   },
 
 
@@ -170,7 +165,16 @@ module.exports = {
         if (user.adminId == decoded.sub) {
           let regimen = await Regimen.findById({ _id: regimenId });
           let updatedRegimens = [...user.regimens, regimen];
-          let updatedUser = await User.findByIdAndUpdate(user._id, { regimens: updatedRegimens }, { new: true }).populate('regimens');
+
+          let userRegimen = generateUserRegimen(regimen);
+          let updatedUserRegimens = [...user.userRegimens, userRegimen];
+
+          let updatedUser = await User.findByIdAndUpdate(user._id,
+            { regimens: updatedRegimens,
+              userRegimens: updatedUserRegimens },
+            { new: true })
+            .populate('userRegimens');
+            
           res.status(200).send(updatedUser);
         } else {
           res.status(403).send('You do not have administrative access to this user');
