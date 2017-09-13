@@ -9,21 +9,16 @@ const userSchema = new Schema({
   email: {
     type: String,
     lowercase: true,
-    required: [true, 'Email is required']},
+    required: [true, 'Email is required'] },
   password: String,
   mobile: String,
   sport: { type: String, lowercase: true },
   signupDate: Date,
-  admin: {
-    type: Schema.Types.ObjectId,
-    ref: 'admin'
-  },
-  // Regimen (templates) assigned to user
+  adminId: String,
   regimens: [{
     type: Schema.Types.ObjectId,
     ref: 'regimen'
   }],
-  // Actual regimens with user tiles
   userRegimens: [userRegimenSchema],
   created_date: { type: Date, default: Date.now }
 });
@@ -31,8 +26,6 @@ const userSchema = new Schema({
 
 userSchema.pre('save', function(next) {
   const user = this;
-  const regimens = this.regimens;
-  const Regimen = mongoose.model('regimen');
 
   bcrypt.genSalt(10, function(err, salt) {
     if (err) { return next(err); }
@@ -42,24 +35,12 @@ userSchema.pre('save', function(next) {
       next();
     });
   });
-
-  // For each regimen assigned, generate a userRegimen with
-  // all tiles
-  regimens.forEach(regimen => {
-    const newUserRegimen = {
-      userRegimenName: regimen.regimenName,
-      userTiles: regimen.tiles
-    }
-
-    user.userRegimens.push(newUserRegimen);
-    next();
-  });
 });
 
 
 userSchema.pre('remove', function(next) {
   const userToRemove = this;
-  const userAdmin = this.admin._id;
+  const userAdmin = this.adminId;
   const Admin = mongoose.model('admin');
   Admin.findById({ _id: userAdmin })
     .then((admin) => {

@@ -1,17 +1,25 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-
-// Regimens are created by Admins and assigned to Users
-// Regimens contain references to Tiles
+const tileSchema = require('./tile_schema');
 
 const regimenSchema = new Schema({
   regimenName: { type: String, lowercase: true },
-  tiles: [{
-    type: Schema.Types.ObjectId,
-    ref: 'tile'
-  }],
+  adminId: String,
+  tiles: [tileSchema],
   created_date: { type: Date, default: Date.now },
 });
 
+
+regimenSchema.pre('remove', function(next) {
+  const regimenToRemove = this;
+  const regimenAdmin = this.adminId;
+  const Admin = mongoose.model('admin');
+  Admin.findById({ _id: regimenAdmin })
+    .then((admin) => {
+      admin.regimens = admin.regimens.filter(regimen => regimen == regimenToRemove);
+      admin.save()
+      .then(() => next());
+    })
+  });
 
 module.exports = mongoose.model('regimen', regimenSchema);

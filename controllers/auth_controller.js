@@ -17,35 +17,33 @@ module.exports = {
 // ADMIN AUTHORIZATION =======================================================>
 
   // POST /admin/login
-  admin_login(req, res, next) {
+  login_admin (req, res, next) {
     // Admin is already authorized via passport
     const token = tokenForUser(req.user);
     res.send({ token: token, email: req.user.email } );
   },
 
-
-  // POST /admin/new
-  admin_create(req, res, next) {
+  // POST /admin
+  create_admin: async (req, res, next) => {
     const adminProps = req.body;
-
-    Admin.findOne({ email: adminProps.email })
-      .then((admin) => {
-        if (admin === null) {
-          Admin.create(adminProps)
-            .then(admin => res.send(admin))
-            .catch(next);
-        } else {
-          res.status(409).send('This email is already registered');
-          console.log('send email exists error');
-        }
-      })
-      .catch(next);
+    try {
+      let existingAdmin = await Admin.findOne({ email: adminProps.email });
+      if (!existingAdmin) {
+        let newAdmin = await Admin.create(adminProps);
+        res.status(200).send(newAdmin);
+      } else {
+        res.status(409).send('This email is already registered for an admin account');
+      }
+    } catch (err) {
+      next(err);
+    }
   },
+
 
 // USER AUTHORIZATION ======================================================>
 
   // POST /login
-  user_login(req, res, next) {
+  login_user (req, res, next) {
     // User is already authorized via passport
     const token = tokenForUser(req.user);
     res.send({ token: token, email: req.user.email } );

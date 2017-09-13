@@ -6,10 +6,10 @@ const entrySchema = require('./entry_schema');
 
 const userTileSchema = new Schema({
   userTileName: String,
-  tile: {
-    type: Schema.Types.ObjectId,
-    ref: 'tile'
-  },
+  // fromTile: {
+  //   type: Schema.Types.ObjectId,
+  //   ref: 'tile'
+  // },
   mode: String,
   continuousHours: Number,
   continuousDays: Number,

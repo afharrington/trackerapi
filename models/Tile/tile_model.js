@@ -12,7 +12,7 @@ const tileSchema = new Schema({
   goalHours: { type: Number, default: null },
   goalCycle: { type: String, default: null },
   activityOptions: [],
-  created_date: { type: Date, default: Date.now },
+  created_date: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('tile', tileSchema);

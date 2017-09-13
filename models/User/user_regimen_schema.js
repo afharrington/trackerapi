@@ -7,6 +7,10 @@ const userTileSchema = require('./user_tile_schema');
 
 const userRegimenSchema = new Schema({
   userRegimenName: { type: String, lowercase: true },
+  fromRegimen: {
+    type: Schema.Types.ObjectId,
+    ref: 'regimen'
+  },
   userTiles: [userTileSchema],
   created_date: { type: Date, default: Date.now },
 });

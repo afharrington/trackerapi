@@ -1,16 +1,38 @@
 const assert = require('assert');
 const User = require('../models/User/user_model');
+const Regimen = require('../models/Regimen/regimen_model');
 
 describe('Reading users out of the database', () => {
-  let joe;
+  let joe, jason, jim, jordan, fitness;
 
   beforeEach((done) => {
+    fitness = new Regimen({
+      regimenName: 'strength & fitness',
+      tiles: [{
+        tileName: 'hypertrophy',
+        mode: 'goal'
+      },{
+        tileName: 'mobility',
+        mode: 'goal'
+      }]
+    });
+
     jason = new User({ firstName: 'jason', email: 'jason@gmail.com' });
     jim = new User({ firstName: 'jim', email: 'jim@gmail.com' });
-    joe = new User({ firstName: 'joe', email: 'joe@gmail.com' });
     jordan = new User({ firstName: 'jordan', email: 'jordan@gmail.com' });
 
-    Promise.all([jason.save(), jim.save(), joe.save(), jordan.save()])
+    joe = new User({
+      firstName: 'joe',
+      lastName: 'howard',
+      email: 'joe@gmail.com',
+      password: 'password',
+      mobile: '555-555-5555',
+      sport: 'basketball',
+      regimens: [fitness]
+    });
+
+
+    Promise.all([jason.save(), jim.save(), joe.save(), jordan.save(), fitness.save()])
       .then(() => done());
   });
 

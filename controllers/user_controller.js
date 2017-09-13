@@ -5,10 +5,6 @@ const ExtractJwt = require('passport-jwt').ExtractJwt;
 
 const User = require('../models/User/user_model');
 
-// Token for Testing:
-// bob@gmail.com/ password
-// eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1OWFkZjQzOGU1ZTRmMDBlNjAzYThjZWUiLCJpYXQiOjE1MDQ1NzI3MTk1NDR9.3BB2IqcyLZyT7WqI8AZY2zo0Utx-Ga7fwU2ptIVGj9Q
-
 // GET /
 exports.get_player_dashboard = function(req, res) {
   const header = req.headers.authorization.slice(4);

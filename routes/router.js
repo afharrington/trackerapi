@@ -18,34 +18,39 @@ module.exports = function(app) {
   app.put('/test/:id', test.edit);
   app.delete('/test/:id', test.delete);
 
-  // AUTHENTICATION ROUTES ==================================================>>
+  // AUTHENICATION ROUTES ===================================================>>
+  // Need to add PUT and DELETE for admin accounts
 
-  app.post('/admin/new', auth.admin_create); // sign up new admin, then send token
-  app.post('/admin/login', requireAdminLogin, auth.admin_login); // authorize login, then send token
-  app.post('/login', requireUserLogin, auth.user_login); // authorize user login, then send token
+  app.post('/admin', auth.create_admin); // sign up new admin, then send token
+  app.post('/admin/login', requireAdminLogin, auth.login_admin); // authorize login, then send token
+  app.post('/login', requireUserLogin, auth.login_user); // authorize user login, then send token
 
   // ADMIN ROUTES ===========================================================>>
 
-  app.get('/admin', requireAdminAuth, admin.admin_read);
-  app.post('/admin/user', requireAdminAuth, admin.user_create);
-  // app.get('/admin/player/:playerId', requireAdminAuth, admin.get_player);
-  // app.put('/admin/player/:playerId', requireAdminAuth, admin.update_player);
-  // app.delete('/admin/player/:playerId', requireAdminAuth, admin.delete_player);
-  //
-  // app.post('/admin/profile', requireAdminAuth, admin.create_profile);
-  // app.get('/admin/profile/:profileId', requireAdminAuth, admin.get_profile);
-  // app.put('/admin/profile/:profileId', requireAdminAuth, admin.update_profile);
-  // app.delete('/admin/profile/:profileId', requireAdminAuth, admin.delete_profile);
-  //
-  // app.post('/admin/profile/:profileId', requireAdminAuth, admin.create_tile_profile);
-  // app.get('/admin/profile/:profileId/tileprofile/:tileProfileId', requireAdminAuth, admin.get_tile_profile);
-  // app.put('/admin/profile/:profileId/tileprofile/:tileProfileId', requireAdminAuth, admin.update_tile_profile);
-  // app.delete('/admin/profile/:profileId/tileprofile/:tileProfileId', requireAdminAuth, admin.delete_tile_profile);
+  // Managing user accounts
+  app.get('/admin', requireAdminAuth, admin.get_admin);
+  app.post('/admin/user', requireAdminAuth, admin.create_user);
+  app.get('/admin/user/:userId', requireAdminAuth, admin.get_user);
+  app.put('/admin/user/:userId', requireAdminAuth, admin.update_user);
+  app.delete('/admin/user/:userId', requireAdminAuth, admin.delete_user);
+  app.post('/admin/user/:userId', requireAdminAuth, admin.assign_regimens)
+
+  // Managing regimens
+  app.get('/admin/regimen', requireAdminAuth, admin.get_all_regimens);
+  app.post('/admin/regimen', requireAdminAuth, admin.create_regimen);
+  app.get('/admin/regimen/:regimenId', requireAdminAuth, admin.get_regimen);
+  app.put('/admin/regimen/:regimenId', requireAdminAuth, admin.update_regimen);
+  app.delete('/admin/regimen/:regimenId', requireAdminAuth, admin.delete_regimen);
+  app.post('/admin/regimen/:regimenId', requireAdminAuth, admin.create_tile);
+
+  // Managing tiles
+  app.put('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.update_tile);
+  app.delete('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.delete_tile);
 
 // PLAYER ROUTES ===========================================================>>
 
-  //app.get('/', requireUserAuth, user.get_player_dashboard); // get general player info
-  // app.get('/player/tiles', requirePlayerAuth, player.get_all_tiles); // will get all the player's tiles - this will also generate tiles based on the profile if they don't already exist
+  app.get('/', requireUserAuth, user.get_user);
+// app.get('/player/tiles', requirePlayerAuth, player.get_all_tiles); // will get all the player's tiles - this will also generate tiles based on the profile if they don't already exist
 //
 //   app.get('/player/tiles/:tileId', requirePlayerAuth, player.get_entries); // get entries for a specifc tile
 //   app.post('/player/tiles/:tileId', requirePlayerAuth, player.add_entry); // add an entry to a tile

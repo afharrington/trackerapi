@@ -4,48 +4,29 @@ const Regimen = require('../models/Regimen/regimen_model');
 const Tile = require('../models/Tile/tile_model');
 
 describe('Creating a user', () => {
-  let regimen;
+  let fitness;
 
   beforeEach((done) => {
-    fitness = new Regimen({ regimenName: 'strength & fitness' });
+    fitness = new Regimen({
+      regimenName: 'strength & fitness',
+      tiles: [{
+        tileName: 'hypertrophy',
+        mode: 'goal'
+      },{
+        tileName: 'mobility',
+        mode: 'goal'
+      }]
+    });
+
     brainHealth = new Regimen({ regimenName: 'brain health' });
 
-    hypertrophy = new Tile({
-      tileName: 'hypertrophy',
-      mode: 'goal'
-    });
-
-    mobility = new Tile({
-      tileName: 'mobility',
-      mode: 'goal'
-    });
-
-    fitness.tiles.push(hypertrophy);
-    fitness.tiles.push(mobility);
-
-    Promise.all([fitness.save(), brainHealth.save(), hypertrophy.save(), mobility.save()])
+    Promise.all([fitness.save(), brainHealth.save()])
       .then(() => done());
   });
 
+
   it('saves a user', (done) => {
-    const joe = new User({
-      firstName: 'joe',
-      lastName: 'howard',
-      email: 'joe@gmail.com',
-      password: 'password',
-      mobile: '555-555-5555',
-      sport: 'basketball',
-      regimens: [fitness, brainHealth]
-    });
 
-    joe.save() // save returns a promise
-      .then(() => {
-        assert(!joe.isNew); // successfully saved
-        done();
-      });
-  });
-
-  it('generates a user regimen for upon saving new user', (done) => {
     const joe = new User({
       firstName: 'joe',
       lastName: 'howard',
@@ -57,12 +38,32 @@ describe('Creating a user', () => {
       userRegimens: []
     });
 
+    joe.regimens.forEach(regimen => {
+        let userRegimen = {
+          userRegimenName: regimen.regimenName,
+          userTiles: []
+        };
+        if(regimen.tiles) {
+          regimen.tiles.forEach(tile => {
+            let userTile = {
+              userTileName: tile.tileName,
+              mode: tile.mode,
+              continuousHours: tile.continuousHours,
+              continuousDays: tile.continuousDays,
+              goalHours: tile.goalHours,
+              activityOptions: tile.activityOptions
+            }
+            userRegimen.userTiles.push(userTile);
+          });
+          joe.userRegimens.push(userRegimen);
+        }
+    });
+
     joe.save()
-      .then(() => User.findOne({ 'firstName': 'joe' }))
-      .then((user) => {
-        assert(user.userRegimens[0].userRegimenName == 'strength & fitness');
-        assert(user.userRegimens[0].userTiles.length == 2);
+      .then(() => {
+        assert(!joe.isNew);
         done();
       });
-    });
+  });
+
 });
