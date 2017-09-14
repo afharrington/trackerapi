@@ -5,7 +5,7 @@ const entrySchema = new Schema({
   activity: String,
   comments: { type: String, default: '' },
   minutes: Number,
-  date: Date
+  created_date: { type: Date, default: Date.now }
 });
 
 module.exports = entrySchema;

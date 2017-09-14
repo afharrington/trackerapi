@@ -84,14 +84,18 @@ module.exports = {
 
     const entry = {
       "activity": req.body.activity,
-      "comments": req.body.comments
+      "comments": req.body.comments,
+      "minutes": req.body.minutes
     }
+
+    let entryHours = (req.body.minutes / 60);
 
     try {
       let regimen = await UserRegimen.findById(regId);
       if (regimen.userId == decoded.sub) {
         let tile = regimen.userTiles.find(tile => tile._id == tileId);
         tile.entries = [entry, ...tile.entries];
+        tile.totalHoursLifetime = tile.totalHoursLifetime + entryHours;
         let updatedRegimen = await regimen.save();
         res.status(200).send(updatedRegimen);
       } else {
@@ -104,7 +108,7 @@ module.exports = {
 
 
   // GET /user/reg/:regId/tile/:tileId
-  get_entries: async (req, res, next) => {
+  get_tile: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
     const { regId, tileId } = req.params;
@@ -113,7 +117,7 @@ module.exports = {
       let regimen = await UserRegimen.findById(regId);
       if (regimen.userId == decoded.sub) {
         let tile = regimen.userTiles.find(tile => tile._id == tileId);
-        res.status(200).send(tile.entries);
+        res.status(200).send(tile);
       }
     } catch(err) {
       next(err);
@@ -157,7 +161,14 @@ module.exports = {
       let regimen = await UserRegimen.findById(regId);
       if (regimen.userId == decoded.sub) {
         let tile = regimen.userTiles.find(tile => tile._id == tileId);
+
+        let entry = tile.entries.find(entry => entry._id == entryId);
+        let entryMinutes = entry.minutes;
+
         tile.entries = tile.entries.filter(entry => entry._id != entryId);
+
+        tile.totalHoursLifetime -= (entryMinutes / 60);
+        
         let updatedRegimen = await regimen.save();
         res.status(200).send(updatedRegimen);
       }

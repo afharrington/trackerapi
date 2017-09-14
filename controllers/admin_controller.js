@@ -150,6 +150,7 @@ module.exports = {
           if (regimen.tiles) {
             regimen.tiles.forEach( tile => {
               let userTile = {
+                fromTile: tile,
                 userTileName: tile.tileName,
                 mode: tile.mode,
                 continuousHours: tile.continuousHours,
