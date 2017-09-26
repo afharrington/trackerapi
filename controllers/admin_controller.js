@@ -13,6 +13,7 @@ const UserTile = require('../models/UserRegimen/user_tile_schema');
 
 // MANAGING USER ACCOUNTS ==================================================>>
 
+
 module.exports = {
 
   get_all_users: async (req, res, next) => {
@@ -20,7 +21,14 @@ module.exports = {
     const decoded = jwt.decode(header, config.secret);
 
     try {
-      let admin = await Admin.findById(decoded.sub).populate('users');
+      let admin = await Admin.findById(decoded.sub)
+        .populate({
+          path: 'users',
+          populate: {
+            path: 'userRegimens',
+            model: 'userRegimen'
+          }
+        });
       let users = admin.users;
       res.status(200).send(users);
     } catch(err) {
@@ -37,11 +45,44 @@ module.exports = {
 
     try {
       let user = await User.findOne({ email: props.email });
+
       if (!user) {
+
+        // Find the regimen
+        let regimen = await Regimen.findById({ _id: props.regimen });
+        props.regimen = { regimen: regimen._id, regimenName: regimen.regimenName };
+
+        // Create a new user
         let user = await User.create(props);
-        let admin = await Admin.findById({ _id: decoded.sub });
+
+
+        // Based on that regimen, create an array of userRegimenTiles
+        let userRegimenTiles = [];
+        if (regimen.tiles) {
+          regimen.tiles.forEach( tile => {
+            let userTile = {
+              fromTile: tile,
+              userTileName: tile.tileName,
+              goalCycle: tile.goalCycle,
+              goalHours: tile.goalHours,
+              activityOptions: tile.activityOptions
+            }
+            userRegimenTiles.push(userTile);
+          })
+        }
+
+        // Create a user regimen
+        let userRegimen = await UserRegimen.create({
+          userId: user._id,
+          fromRegimen: regimen,
+          userRegimenName: regimen.regimenName,
+          userTiles: userRegimenTiles
+        });
+
+        await User.findByIdAndUpdate(user._id, { userRegimen: userRegimen });
 
         // add new user to the admin's list
+        let admin = await Admin.findById({ _id: decoded.sub });
         updatedUsers = [...admin.users, user];
         await Admin.findByIdAndUpdate(decoded.sub, { users: updatedUsers });
         res.status(200).send(user);
@@ -125,71 +166,6 @@ module.exports = {
     }
   },
 
-
-  // POST /admin/user/:userId
-  assign_regimen: async (req, res, next) => {
-    const header = req.headers.authorization.slice(4);
-    const decoded = jwt.decode(header, config.secret);
-    const regimenId = req.body.regimenId;
-    const { userId } = req.params;
-
-    try {
-      let user = await User.findById(userId);
-
-      // Ensure on client side that the same regimen can't be added twice
-      if (user) {
-        if (user.adminId == decoded.sub) {
-          // Look up the regimen (template)
-          let regimen = await Regimen.findById({ _id: regimenId });
-
-          // Add the regimen template to the list of regimens
-          let updatedRegimens = [...user.regimens, regimen];
-
-          // Generate user regimen tiles
-          let userRegimenTiles = [];
-          if (regimen.tiles) {
-            regimen.tiles.forEach( tile => {
-              let userTile = {
-                fromTile: tile,
-                userTileName: tile.tileName,
-                mode: tile.mode,
-                continuousHours: tile.continuousHours,
-                continuousDays: tile.continuousDays,
-                goalHours: tile.goalHours,
-                activityOptions: tile.activityOptions
-              }
-              userRegimenTiles.push(userTile);
-            })
-          }
-
-          // Create a new user regimen
-          let userRegimen = await UserRegimen.create({
-              userId: user._id,
-              fromRegimen: regimen,
-              userRegimenName: regimen.regimenName,
-              userTiles: userRegimenTiles
-            });
-
-          let updatedUserRegimens = [userRegimen, ...user.userRegimens];
-
-          // Update user with regimens and user regimens
-          let updatedUser = await User.findByIdAndUpdate(user._id,
-            { regimens: updatedRegimens,
-              userRegimens: updatedUserRegimens },
-            { new: true })
-            .populate('userRegimens');
-
-          res.status(200).send(updatedUser);
-        } else {
-          res.status(403).send('You do not have administrative access to this user');
-        }
-      } else {
-        res.status(422).send({ error: 'User not found'});
-      }
-    } catch(err) {
-      next(err);
-    }
-  },
 
 
 // MANAGING REGIMENS =======================================================>>
@@ -378,7 +354,7 @@ module.exports = {
           regimen.tiles.forEach( (tile, i) => {
             if (tile._id == tileId) { regimen.tiles[i] = updatedTile }
           });
-          let updatedRegimen = await regimen.save();
+          let updatedRegimen = await regimen.save({new: true});
           res.status(200).send(updatedRegimen);
         } else {
           res.status(403).send('You do not have administrative access to this regimen');

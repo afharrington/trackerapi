@@ -1,34 +1,29 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const bcrypt = require('bcrypt-nodejs');
+const async = require('async');
 
 const userSchema = new Schema({
   firstName: { type: String, lowercase: true },
   lastName: { type: String, lowercase: true },
+  phone: String,
   email: {
     type: String,
-    lowercase: true,
-    required: [true, 'Email is required'] },
-  password: String,
-  mobile: String,
+    lowercase: true },
+  password: { type: String },
   sport: { type: String, lowercase: true },
-  signupDate: Date,
   adminId: String,
-  regimens: [{
-    type: Schema.Types.ObjectId,
-    ref: 'regimen'
-  }],
-  userRegimens: [{
+  regimen: {},
+  userRegimen: {
     type: Schema.Types.ObjectId,
     ref: 'userRegimen'
-  }],
+  },
   created_date: { type: Date, default: Date.now }
 });
 
 
 userSchema.pre('save', function(next) {
   const user = this;
-
   bcrypt.genSalt(10, function(err, salt) {
     if (err) { return next(err); }
     bcrypt.hash(user.password, salt, null, function(err, hash) {

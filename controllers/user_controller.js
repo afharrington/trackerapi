@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const jwt = require('jwt-simple');
+const moment = require('moment');
 const config = require('../config/keys.js');
 const ExtractJwt = require('passport-jwt').ExtractJwt;
 
@@ -10,14 +11,14 @@ const UserRegimen = require('../models/UserRegimen/user_regimen_model');
 
 module.exports = {
 
-  // GET  /
+  // GET  /user
   get_user: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
 
     try {
       let user = await User.findById({ _id: decoded.sub })
-      .populate('userRegimens');
+      .populate('userRegimen');
       res.status(200).send(user);
     } catch(err) {
       next(err);
@@ -84,20 +85,40 @@ module.exports = {
 
     const entry = {
       "activity": req.body.activity,
-      "comments": req.body.comments,
-      "minutes": req.body.minutes
+      "notes": req.body.notes,
+      "minutes": req.body.minutes,
+      "entryDate": req.body.entryDate
     }
-
-    let entryHours = (req.body.minutes / 60);
 
     try {
       let regimen = await UserRegimen.findById(regId);
       if (regimen.userId == decoded.sub) {
+        let now = new Date();
         let tile = regimen.userTiles.find(tile => tile._id == tileId);
-        tile.entries = [entry, ...tile.entries];
-        tile.totalHoursLifetime = tile.totalHoursLifetime + entryHours;
+        let cycles = tile.cycles;
+        let cycleStart = tile.currentCycleStart;
+        let cycleLength = tile.goalCycle;
+        let current = moment(now);
+        let recent = moment(cycleStart);
+        let daysSinceCycleStart = current.diff(cycleStart, 'days');
+        console.log(daysSinceCycleStart);
+
+        // If the last cycle has closed, refresh variables, start a new one and add the entry
+        if (daysSinceCycleStart > cycleLength || tile.cycles.length == 0) {
+          tile.currentCycleStart = now;
+          let newCycle = {
+            cycleStartDate: now,
+            cycleTotalMinutes: 0,
+            cycleEntries: [entry]
+          }
+          tile.cycles = [newCycle, ...tile.cycles];
+        } else {
+          // Add entry to the current cycle
+          tile.cycles[0].cycleEntries = [entry, ...tile.cycles[0].cycleEntries];
+        }
+
         let updatedRegimen = await regimen.save();
-        res.status(200).send(updatedRegimen);
+        res.status(200).send(tile);
       } else {
         res.status(403).send('You do not have access to this regimen');
       }
@@ -168,7 +189,7 @@ module.exports = {
         tile.entries = tile.entries.filter(entry => entry._id != entryId);
 
         tile.totalHoursLifetime -= (entryMinutes / 60);
-        
+
         let updatedRegimen = await regimen.save();
         res.status(200).send(updatedRegimen);
       }

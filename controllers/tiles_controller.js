@@ -1,5 +1,4 @@
-"use strict";
-var mongoose = require("mongoose");
+var mongoose = require('mongoose');
 var tile = require("../models/tileModel.js");
 var entry = require("../models/tileModel.js");
 const jwt = require('jwt-simple');
@@ -37,11 +36,8 @@ exports.create_tile = function(req, res) {
 exports.update_tile = function(req, res) {
   tile.findById(req.params.tileId, function(err, tile) {
     tile.name = req.body.name;
-    tile.mode = req.body.mode;
     tile.goalHours = req.body.goalHours;
     tile.goalCycle = req.body.goalCycle;
-    tile.continuousHours = req.body.continuousHours;
-    tile.continuousDays = req.body.continuousDays;
     tile.goalLastCycleStart = req.body.goalLastCycleStart;
     tile.color = req.body.color;
 
@@ -96,13 +92,8 @@ exports.create_entry = function(req, res) {
     tile.totalMinutes += entryMinutes;
 
     let addToColor;
-
-    if (tile.mode == "goal") {
-      let hoursPerColor = ( tile.goalHours / tile.goalCycle) * 60;
-      addToColor = entryMinutes / hoursPerColor;
-    } else if (tile.mode == "continuous") {
-      addToColor = entryMinutes / ( tile.continuousHours * 60);
-    }
+    let hoursPerColor = ( tile.goalHours / tile.goalCycle) * 60;
+    addToColor = entryMinutes / hoursPerColor;
 
     tile.color = tile.color + addToColor;
     tile.entries = [{ date: req.body.date, content: req.body.content, comments: req.body.comments, minutes: req.body.minutes}].concat(tile.entries);

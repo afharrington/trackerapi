@@ -17,10 +17,9 @@ module.exports = {
 // ADMIN AUTHORIZATION =======================================================>
 
   // POST /admin/login
-  login_admin (req, res, next) {
-    // Admin is already authorized via passport
+  login (req, res, next) {
     const token = tokenForUser(req.user);
-    res.send({ token: token, email: req.user.email } );
+    res.send({ token: token, firstName: req.user.firstName } );
   },
 
   // POST /admin
@@ -30,7 +29,8 @@ module.exports = {
       let existingAdmin = await Admin.findOne({ email: adminProps.email });
       if (!existingAdmin) {
         let newAdmin = await Admin.create(adminProps);
-        res.status(200).send(newAdmin);
+        const token = tokenForUser(newAdmin);
+        res.status(200).send({ token: token, firstName: newAdmin.firstName });
       } else {
         res.status(409).send('This email is already registered for an admin account');
       }
@@ -39,7 +39,7 @@ module.exports = {
     }
   },
 
-  
+
   // GET /admin
   get_admin: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -66,15 +66,17 @@ module.exports = {
     } catch(err) {
       next(err);
     }
-  },
-
-
-// USER AUTHORIZATION ======================================================>
-
-  // POST /login
-  login_user (req, res, next) {
-    // User is already authorized via passport
-    const token = tokenForUser(req.user);
-    res.send({ token: token, email: req.user.email } );
   }
+
 }
+
+
+// // USER AUTHORIZATION ======================================================>
+//
+//   // POST /login
+//   login_user (req, res, next) {
+//     // User is already authorized via passport
+//     const token = tokenForUser(req.user);
+//     res.send({ token: token, email: req.user.email } );
+//   }
+// }

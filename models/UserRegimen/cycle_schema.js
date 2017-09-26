@@ -1,35 +1,20 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const entrySchema = require('./entry_schema');
-const cycleSchema = require('./cycle_schema');
-const moment = require('moment');
 
-const userTileSchema = new Schema({
-  userTileName: String,
-  fromTile: {
-    type: Schema.Types.ObjectId,
-    ref: 'tile'
-  },
-  goalHours: { type: Number, default: null },
-  goalCycle: { type: Number, default: null },
-  totalMinutesCycle: { type: Number, default: 0 },
-  currentCycleStart: { type: Date, default: Date.now },
-  activityOptions: [],
-  // entries: [entrySchema],
-  cycles: [cycleSchema],
-  created_date: { type: Date, default: Date.now }
-},{
-  toObject: {
-    virtuals: true
-  },
-  toJSON: {
-    virtuals: true
-  }
+const cycleSchema = new Schema({
+  cycleStartDate: { type: Date, default: Date.now },
+  cycleTotalMinutes: Number,
+  cycleEntries: [entrySchema]
 });
 
-// Check how many days since the last cycle start
-// If it hasn't been the length of a goal cycle yet
+module.exports = cycleSchema;
 
+// FINISH THIS
+cycleSchema.virtual('cycleTotalMinutes').get(function() {
+
+
+})
 
 // userTileSchema.virtual('color').get(function() {
 //   let color;
@@ -67,5 +52,3 @@ const userTileSchema = new Schema({
 //     return color;
 //   }
 // });
-
-module.exports = userTileSchema;

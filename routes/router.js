@@ -23,9 +23,8 @@ module.exports = function(app) {
   app.post('/admin', auth.create_admin);
   app.get('/admin', requireAdminAuth, auth.get_admin);
   app.put('/admin', requireAdminAuth, auth.update_admin);
-
-  app.post('/admin/login', requireAdminLogin, auth.login_admin);
-  app.post('/login', requireUserLogin, auth.login_user);
+  app.post('/admin/login', requireAdminLogin, auth.login);
+  app.post('/login', requireUserLogin, auth.login);
 
   // ADMIN ROUTES ===========================================================>>
 
@@ -35,7 +34,6 @@ module.exports = function(app) {
   app.get('/admin/user/:userId', requireAdminAuth, admin.get_user);
   app.put('/admin/user/:userId', requireAdminAuth, admin.update_user);
   app.delete('/admin/user/:userId', requireAdminAuth, admin.delete_user);
-  app.post('/admin/user/:userId', requireAdminAuth, admin.assign_regimen)
 
   // Managing regimens
   app.get('/admin/regimen', requireAdminAuth, admin.get_all_regimens);
@@ -53,11 +51,11 @@ module.exports = function(app) {
 // USER ROUTES ===========================================================>>
 
   // Managing user account
-  app.get('/', requireUserAuth, user.get_user);
+  app.get('/user', requireUserAuth, user.get_user);
   app.put('/', requireUserAuth, user.update_user);
 
   // Accessing all user regimens
-  app.get('/user', requireUserAuth, user.get_regimens);
+  // app.get('/user', requireUserAuth, user.get_regimens);
 
   // Accessing specific user regimen with tiles
   app.get('/user/reg/:regId', requireUserAuth, user.get_regimen);

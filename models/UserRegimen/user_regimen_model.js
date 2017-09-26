@@ -20,7 +20,7 @@ userRegimenSchema.pre('remove', function(next) {
   const User = mongoose.model('user');
   User.findById({ _id: this.userId })
     .then((user) => {
-      user.userRegimens = user.userRegimens.filter(regimen => regimen == userRegimenToRemove);
+      user.userRegimen = null;
       user.save()
       .then(() => next());
     })
