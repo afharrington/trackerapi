@@ -95,22 +95,21 @@ module.exports = {
       if (regimen.userId == decoded.sub) {
         let now = new Date();
         let tile = regimen.userTiles.find(tile => tile._id == tileId);
-        let cycles = tile.cycles;
-        let cycleStart = tile.currentCycleStart;
-        let cycleLength = tile.goalCycle;
+        let currentCycleStart = tile.currentCycleStart;
         let current = moment(now);
-        let recent = moment(cycleStart);
-        let daysSinceCycleStart = current.diff(cycleStart, 'days');
-        console.log(daysSinceCycleStart);
+        let recent = moment(currentCycleStart);
+        let daysSince = current.diff(currentCycleStart, 'days');
 
         // If the last cycle has closed, refresh variables, start a new one and add the entry
-        if (daysSinceCycleStart > cycleLength || tile.cycles.length == 0) {
+        if (daysSince > tile.goalCycle || tile.cycles.length == 0) {
           tile.currentCycleStart = now;
           let newCycle = {
             cycleStartDate: now,
-            cycleTotalMinutes: 0,
-            cycleEntries: [entry]
+            cycleEntries: [entry],
+            cycleLengthInDays: tile.goalCycle,
+            cycleGoalInHours: tile.goalHours
           }
+
           tile.cycles = [newCycle, ...tile.cycles];
         } else {
           // Add entry to the current cycle

@@ -1,54 +1,55 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const entrySchema = require('./entry_schema');
+const moment = require('moment');
 
 const cycleSchema = new Schema({
   cycleStartDate: { type: Date, default: Date.now },
+  cycleEntries: [entrySchema],
   cycleTotalMinutes: Number,
-  cycleEntries: [entrySchema]
+  cycleLengthInDays: Number,
+  cycleGoalInHours: Number,
+  color: Number
+},{
+  toObject: {
+    virtuals: true
+  },
+  toJSON: {
+    virtuals: true
+  }
 });
 
 module.exports = cycleSchema;
 
-// FINISH THIS
-cycleSchema.virtual('cycleTotalMinutes').get(function() {
+// Calculates total minutes and color value
+cycleSchema.pre('save', function(next) {
+  const NUM_SHADES = 10;
+  const shadesPerHour = Math.floor(NUM_SHADES / this.cycleGoalInHours);
+  let color;
+  if (this.cycleEntries.length !== 0) {
+    let totalMinutes = this.cycleEntries.reduce(function(prev, curr) {
+      return prev + curr['minutes'];
+    }, 0);
+    this.cycleTotalMinutes = totalMinutes;
+    let totalHours = totalMinutes / 60;
+    if (totalHours == 0) {
+      color = 0;
+    } else {
+      color = shadesPerHour * totalHours;
+    }
+    if (color < 0) {
+      this.color = 0;
+    } else if (color > 9) {
+      this.color = 9;
+    } else {
+      this.color = color;
+    }
+  }
+  next();
+});
 
 
+cycleSchema.virtual('cycleEndDate').get(function() {
+  let endDate = moment(this.cycleStartDate).add(this.cycleLengthInDays, 'days');
+  return endDate;
 })
-
-// userTileSchema.virtual('color').get(function() {
-//   let color;
-//   let currentTime = new Date();
-//   let mostRecent;
-//   if (this.entries.length !== 0) {
-//     mostRecent = this.entries[0].created_date;
-//   }
-//
-//   let current = moment(currentTime);
-//   let recent = moment(mostRecent);
-//   let daysSince = current.diff(recent, 'days');
-//
-//   let shadesPerHour = Math.floor(10 / 3);
-//
-//   if (daysSince > this.goalCycle) {
-//     this.currentCycleStart == new Date();
-//     this.totalMinutesCycle = 0;
-//     return 0;
-//   }
-//
-//   if (this.totalMinutesCycle == 0) {
-//     color = 0;
-//   } else {
-//     color = shadesPerHour * this.totalMinutesCycle;
-//   }
-//
-//
-//
-//   if (color < 0) {
-//     return 0;
-//   } else if (color > 9) {
-//     return 9;
-//   } else {
-//     return color;
-//   }
-// });
