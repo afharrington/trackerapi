@@ -93,29 +93,38 @@ module.exports = {
     try {
       let regimen = await UserRegimen.findById(regId);
       if (regimen.userId == decoded.sub) {
-        let now = new Date();
+        let today = new Date();
         let tile = regimen.userTiles.find(tile => tile._id == tileId);
-        let currentCycleStart = tile.currentCycleStart;
-        let current = moment(now);
-        let recent = moment(currentCycleStart);
-        let daysSince = current.diff(currentCycleStart, 'days');
+        let cycles = tile.cycles;
+        let lastCycle = tile.cycles.length - 1;
 
-        // If the last cycle has closed, refresh variables, start a new one and add the entry
-        if (daysSince > tile.goalCycle || tile.cycles.length == 0) {
-          tile.currentCycleStart = now;
+        // Check if the entry fits into an existing cycle
+        let thisEntryCycle = cycles.find(cycle => {
+          let cycleStartDate = cycle.cycleStartDate;
+          let cycleEndDate = cycle.cycleEndDate;
+          return moment(entry.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]');
+        });
+
+        if (thisEntryCycle) {
+          thisEntryCycle.cycleEntries = [entry, ...thisEntryCycle.cycleEntries];
+
+          // If there are no entries yet or it does not fit in an existing cycle, create a new cycle
+        } else if (cycles.length == 0 || (!(thisEntryCycle) && moment(entry.entryDate).isAfter(tile.cycles[lastCycle].cycleStartDate))) {
+
           let newCycle = {
-            cycleStartDate: now,
+            cycleStartDate: new Date(entry.entryDate),
             cycleEntries: [entry],
             cycleLengthInDays: tile.goalCycle,
             cycleGoalInHours: tile.goalHours
           }
 
           tile.cycles = [newCycle, ...tile.cycles];
-        } else {
-          // Add entry to the current cycle
-          tile.cycles[0].cycleEntries = [entry, ...tile.cycles[0].cycleEntries];
         }
 
+        // Send error if trying to create a cycle earlier than the very first entry
+        else {
+          res.status(422).send('Invalid entry date');
+        }
         let updatedRegimen = await regimen.save();
         res.status(200).send(tile);
       } else {
@@ -145,52 +154,86 @@ module.exports = {
   },
 
 
-  // PUT /user/reg/:regId/tile/:tileId/entry/:entryId
-  update_entry: async (req, res, next) => {
+
+  // PUT /admin/user/:userId
+  update_user: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
-    const { regId, tileId, entryId } = req.params;
-
-    let updatedEntry = {
-      "activity": req.body.activity,
-      "comments": req.body.comments
-    }
+    const props = req.body;
+    const { userId } = req.params;
 
     try {
-      let regimen = await UserRegimen.findById(regId);
-      if (regimen.userId == decoded.sub) {
-        let tile = regimen.userTiles.find(tile => tile._id == tileId);
-        tile.entries.forEach( (entry, i) => {
-          if (entry._id == entryId) { tile.entries[i] = updatedEntry }
-        });
-        let updatedRegimen = await regimen.save();
-        res.status(200).send(updatedRegimen);
+      const user = await User.findById(userId);
+      if (user) {
+        if (user.adminId == decoded.sub) {
+          let updatedUser = await User.findByIdAndUpdate(userId, props, {new: true});
+          res.status(200).send(updatedUser);
+        } else {
+          res.status(403).send('You do not have administrative access to this user');
+        }
+      } else {
+        res.status(422).send({ error: 'User not found'});
       }
     } catch(err) {
       next(err);
     }
   },
 
-  // DELETE /user/reg/:regId/tile/:tileId/entry/:entryId
-  delete_entry: async(req, res, next) => {
+
+  // PUT /user/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId
+  update_entry: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
-    const { regId, tileId, entryId } = req.params;
+    const props = req.body;
+    const { regId, tileId, cycleId, entryId } = req.params;
 
     try {
       let regimen = await UserRegimen.findById(regId);
       if (regimen.userId == decoded.sub) {
-        let tile = regimen.userTiles.find(tile => tile._id == tileId);
 
-        let entry = tile.entries.find(entry => entry._id == entryId);
+        let tile = regimen.userTiles.find(tile => tile._id == tileId);
+        let cycle = tile.cycles.find(cycle => cycle._id == cycleId);
+        let entry = cycle.cycleEntries.find(entry => entry._id == entryId);
+
+        // let updatedEntry = await Entry.findByIdAndUpdate(entry._id, props, {new: true});
+        // res.status(200).send(tile);
+
+        entry.entryDate = req.body.entryDate;
+        entry.activity = req.body.activity;
+        entry.notes = req.body.notes;
+        entry.minutes = req.body.minutes
+
+        regimen.save({new: true});
+        res.status(200).send(tile);
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+
+  // DELETE /user/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId
+  delete_entry: async(req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { regId, tileId, cycleId, entryId } = req.params;
+
+    try {
+      let regimen = await UserRegimen.findById(regId);
+      if (regimen.userId == decoded.sub) {
+
+        let tile = regimen.userTiles.find(tile => tile._id == tileId);
+        let cycle = tile.cycles.find(cycle => cycle._id == cycleId);
+        let entry = cycle.cycleEntries.find(entry => entry._id == entryId);
         let entryMinutes = entry.minutes;
 
-        tile.entries = tile.entries.filter(entry => entry._id != entryId);
+        cycle.cycleEntries = cycle.cycleEntries.filter(entry => entry._id != entryId);
+        if (cycle.cycleEntries.length == 0) {
+          tile.cycles = tile.cycles.filter(existingCycle => existingCycle._id !== cycle._id);
+        }
 
-        tile.totalHoursLifetime -= (entryMinutes / 60);
-
-        let updatedRegimen = await regimen.save();
-        res.status(200).send(updatedRegimen);
+        regimen.save();
+        res.status(200).send(tile);
       }
     } catch(err) {
       next(err);

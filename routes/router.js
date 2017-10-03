@@ -63,6 +63,6 @@ module.exports = function(app) {
   // Updating specific tiles
   app.get('/user/reg/:regId/tile/:tileId', requireUserAuth, user.get_tile);
   app.post('/user/reg/:regId/tile/:tileId', requireUserAuth, user.add_entry);
-  app.put('/user/reg/:regId/tile/:tileId/entry/:entryId', requireUserAuth, user.update_entry);
-  app.delete('/user/reg/:regId/tile/:tileId/entry/:entryId', requireUserAuth, user.delete_entry);
+  app.put('/user/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId', requireUserAuth, user.update_entry);
+  app.delete('/user/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId', requireUserAuth, user.delete_entry);
 }
