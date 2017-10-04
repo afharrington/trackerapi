@@ -101,7 +101,7 @@ module.exports = {
     const decoded = jwt.decode(header, config.secret);
 
     try {
-      let user = await User.findById({ _id: req.params.userId });
+      let user = await User.findById({ _id: req.params.userId }).populate('userRegimen');
       if (user) {
         if (user.adminId === decoded.sub) {
           res.status(200).send(user);
@@ -160,6 +160,32 @@ module.exports = {
         }
       } else {
         res.status(422).send({ error: 'User not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+  // GET /admin/user/:userId/usertile/:userTileId
+  get_user_tile: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const props = req.body;
+    const { userId, userTileId } = req.params;
+    try {
+      const user = await User.findById(userId).populate('userRegimen');
+      if (user) {
+        console.log(user);
+        if (user.adminId == decoded.sub) {
+          let tile = user.userRegimen.userTiles.find( userTile => {
+            return userTile._id == userTileId;
+          })
+          res.status(200).send(tile);
+        } else {
+          res.status(403).send('You do not have administrative access to this user');
+        }
+      } else {
+        res.status(422).send({ error: 'Tile not found'});
       }
     } catch(err) {
       next(err);
@@ -393,10 +419,5 @@ module.exports = {
     } catch(err) {
       next(err);
     }
-  },
-
-
-  // update_activity
-
-
+  }
 }

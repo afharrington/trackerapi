@@ -34,6 +34,7 @@ module.exports = function(app) {
   app.get('/admin/user/:userId', requireAdminAuth, admin.get_user);
   app.put('/admin/user/:userId', requireAdminAuth, admin.update_user);
   app.delete('/admin/user/:userId', requireAdminAuth, admin.delete_user);
+  app.get('/admin/user/:userId/usertile/:userTileId', requireAdminAuth, admin.get_user_tile);
 
   // Managing regimens
   app.get('/admin/regimen', requireAdminAuth, admin.get_all_regimens);
