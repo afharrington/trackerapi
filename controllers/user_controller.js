@@ -121,10 +121,6 @@ module.exports = {
           tile.cycles = [newCycle, ...tile.cycles];
         }
 
-        // Send error if trying to create a cycle earlier than the very first entry
-        else {
-          res.status(422).send('Invalid entry date');
-        }
         let updatedRegimen = await regimen.save();
         res.status(200).send(tile);
       } else {
@@ -195,13 +191,14 @@ module.exports = {
         let cycle = tile.cycles.find(cycle => cycle._id == cycleId);
         let entry = cycle.cycleEntries.find(entry => entry._id == entryId);
 
-        // let updatedEntry = await Entry.findByIdAndUpdate(entry._id, props, {new: true});
-        // res.status(200).send(tile);
-
         entry.entryDate = req.body.entryDate;
         entry.activity = req.body.activity;
         entry.notes = req.body.notes;
         entry.minutes = req.body.minutes
+
+        // sort entries in order
+
+        // cycle.cycleEntries = cycle.cycleEntries.sort((a, b) => a.entryDate - a.entryDate);
 
         regimen.save({new: true});
         res.status(200).send(tile);
@@ -227,10 +224,11 @@ module.exports = {
         let entry = cycle.cycleEntries.find(entry => entry._id == entryId);
         let entryMinutes = entry.minutes;
 
-        cycle.cycleEntries = cycle.cycleEntries.filter(entry => entry._id != entryId);
-        if (cycle.cycleEntries.length == 0) {
-          tile.cycles = tile.cycles.filter(existingCycle => existingCycle._id !== cycle._id);
-        }
+        // This deletes the entire cycle if there are no entries in it - keep disabled for now
+        // cycle.cycleEntries = cycle.cycleEntries.filter(entry => entry._id != entryId);
+        // if (cycle.cycleEntries.length == 0) {
+        //   tile.cycles = tile.cycles.filter(existingCycle => existingCycle._id !== cycle._id);
+        // }
 
         regimen.save();
         res.status(200).send(tile);

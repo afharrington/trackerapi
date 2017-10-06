@@ -40,9 +40,11 @@ module.exports = function(app) {
   app.get('/admin/regimen', requireAdminAuth, admin.get_all_regimens);
   app.post('/admin/regimen', requireAdminAuth, admin.create_regimen);
   app.get('/admin/regimen/:regimenId', requireAdminAuth, admin.get_regimen);
+  app.get('/admin/regimen/:regimenId/users', requireAdminAuth, admin.get_user_regimens);
   app.put('/admin/regimen/:regimenId', requireAdminAuth, admin.update_regimen);
   app.delete('/admin/regimen/:regimenId', requireAdminAuth, admin.delete_regimen);
   app.post('/admin/regimen/:regimenId', requireAdminAuth, admin.create_tile);
+  app.get('/admin/regimen/:regimenId/tile/:tileId/users', requireAdminAuth, admin.get_user_tiles);
 
   // Managing tiles
   app.post('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.add_activity);

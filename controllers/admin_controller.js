@@ -54,18 +54,33 @@ module.exports = {
 
         // Create a new user
         let user = await User.create(props);
-
+        let userName = `${user.firstName} ${user.lastName}`;
 
         // Based on that regimen, create an array of userRegimenTiles
         let userRegimenTiles = [];
+
+
+
         if (regimen.tiles) {
           regimen.tiles.forEach( tile => {
+
+            // Start a new cycle when you start a new user regimen
+            let newCycle = {
+              cycleStartDate: new Date(),
+              cycleLengthInDays: tile.goalCycle,
+              cycleGoalInHours: tile.goalHours,
+              cycleTotalMinutes: 0,
+              color: 0
+            }
+
             let userTile = {
+              userName,
               fromTile: tile,
               userTileName: tile.tileName,
               goalCycle: tile.goalCycle,
               goalHours: tile.goalHours,
-              activityOptions: tile.activityOptions
+              activityOptions: tile.activityOptions,
+              cycles: [newCycle]
             }
             userRegimenTiles.push(userTile);
           })
@@ -83,7 +98,7 @@ module.exports = {
 
         // add new user to the admin's list
         let admin = await Admin.findById({ _id: decoded.sub });
-        updatedUsers = [...admin.users, user];
+        updatedUsers = [user, ...admin.users];
         await Admin.findByIdAndUpdate(decoded.sub, { users: updatedUsers });
         res.status(200).send(user);
       } else {
@@ -175,7 +190,6 @@ module.exports = {
     try {
       const user = await User.findById(userId).populate('userRegimen');
       if (user) {
-        console.log(user);
         if (user.adminId == decoded.sub) {
           let tile = user.userRegimen.userTiles.find( userTile => {
             return userTile._id == userTileId;
@@ -191,8 +205,6 @@ module.exports = {
       next(err);
     }
   },
-
-
 
 // MANAGING REGIMENS =======================================================>>
 
@@ -220,7 +232,7 @@ module.exports = {
     try {
       let regimen = await Regimen.create(props);
       let admin = await Admin.findByIdAndUpdate({ _id: decoded.sub });
-      updatedRegimens = [...admin.regimens, regimen];
+      updatedRegimens = [regimen, ...admin.regimens];
       await Admin.findByIdAndUpdate(admin._id, { regimens: updatedRegimens});
       res.status(200).send(regimen);
     } catch(err) {
@@ -300,6 +312,30 @@ module.exports = {
     }
   },
 
+
+  // GET /admin/regimen/:regimenId/users
+  get_user_regimens: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { regimenId } = req.params;
+    const props = req.body;
+
+    try {
+      let regimen = await Regimen.findById({ _id: req.params.regimenId });
+      if (regimen) {
+        if (regimen.adminId == decoded.sub) {
+          const userRegimens = await UserRegimen.find({ fromRegimen: regimenId});
+          res.status(200).send(userRegimens);
+        } else {
+          res.status(403).send('You do not have administrative access to this regimen');
+        }
+      } else {
+        res.status(422).send({ error: 'Regimen not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
 
 // MANAGING TILES ===========================================================>>
 
@@ -382,6 +418,37 @@ module.exports = {
           });
           let updatedRegimen = await regimen.save({new: true});
           res.status(200).send(updatedRegimen);
+        } else {
+          res.status(403).send('You do not have administrative access to this regimen');
+        }
+      } else {
+        res.status(422).send({ error: 'Regimen not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+
+  // GET /admin/regimen/:regimenId/tile/:tileId/users
+  get_user_tiles: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { regimenId, tileId } = req.params;
+    const props = req.body;
+
+    try {
+      let regimen = await Regimen.findById({ _id: req.params.regimenId });
+      if (regimen) {
+        if (regimen.adminId == decoded.sub) {
+          let userRegimens = await UserRegimen.find({ fromRegimen: regimenId});
+
+          let tiles = userRegimens.map(userRegimen => {
+            return userRegimen.userTiles.find(userTile => {
+              return userTile.fromTile.toString() == tileId;
+            });
+          });
+          res.status(200).send(tiles);
         } else {
           res.status(403).send('You do not have administrative access to this regimen');
         }

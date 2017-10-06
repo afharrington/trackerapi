@@ -6,6 +6,7 @@ const moment = require('moment');
 
 const userTileSchema = new Schema({
   userTileName: String,
+  userName: String,
   fromTile: {
     type: Schema.Types.ObjectId,
     ref: 'tile'
