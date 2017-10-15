@@ -6,7 +6,8 @@ const async = require('async');
 const userSchema = new Schema({
   firstName: { type: String, lowercase: true },
   lastName: { type: String, lowercase: true },
-  phone: String,
+  code: String,
+  mobile: String,
   email: {
     type: String,
     lowercase: true },

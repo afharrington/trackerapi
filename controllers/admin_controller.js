@@ -13,9 +13,10 @@ const UserTile = require('../models/UserRegimen/user_tile_schema');
 
 // MANAGING USER ACCOUNTS ==================================================>>
 
-
 module.exports = {
 
+  // Get all users managed by this admin
+  // GET /admin/user
   get_all_users: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
@@ -36,6 +37,8 @@ module.exports = {
     }
   },
 
+  // Create a new user from admin dashboard - this assigns a registration code
+  // but does not register the user with a password (that must be done by the user)
   // POST /admin/user
   create_user: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -44,72 +47,76 @@ module.exports = {
     props.adminId = decoded.sub; // adds adminId to user account
 
     try {
-      let user = await User.findOne({ email: props.email });
+      let existingUser = await User.findOne({ email: props.email });
+      if (existingUser) {
+        res.send('This email is already registered for a user account');
+      } else {
 
-      if (!user) {
-
-        // Find the regimen
-        let regimen = await Regimen.findById({ _id: props.regimen });
-        props.regimen = { regimen: regimen._id, regimenName: regimen.regimenName };
-
-        // Create a new user
         let user = await User.create(props);
-        let userName = `${user.firstName} ${user.lastName}`;
 
-        // Based on that regimen, create an array of userRegimenTiles
-        let userRegimenTiles = [];
+        if (props.regimen) {
+          let regimen = await Regimen.findById({ _id: props.regimen });
+          user.regimen = { regimen: regimen._id, regimenName: regimen.regimenName };
+          let userName = `${user.firstName} ${user.lastName}`;
 
+          // Based on that regimen, create an array of userRegimenTiles
+          let userRegimenTiles = [];
 
+          if (regimen.tiles) {
+            regimen.tiles.forEach( tile => {
 
-        if (regimen.tiles) {
-          regimen.tiles.forEach( tile => {
+              // Start a new cycle when you start a new user regimen
+              let newCycle = {
+                cycleStartDate: new Date(),
+                cycleLengthInDays: tile.goalCycle,
+                cycleGoalInHours: tile.goalHours,
+                cycleTotalMinutes: 0,
+                color: 0
+              }
 
-            // Start a new cycle when you start a new user regimen
-            let newCycle = {
-              cycleStartDate: new Date(),
-              cycleLengthInDays: tile.goalCycle,
-              cycleGoalInHours: tile.goalHours,
-              cycleTotalMinutes: 0,
-              color: 0
-            }
+              let userTile = {
+                userName: userName,
+                userId: user._id,
+                fromTile: tile,
+                userTileName: tile.tileName,
+                goalCycle: tile.goalCycle,
+                goalHours: tile.goalHours,
+                activityOptions: tile.activityOptions,
+                cycles: [newCycle]
+              }
+              userRegimenTiles.push(userTile);
+            })
+          }
 
-            let userTile = {
-              userName,
-              fromTile: tile,
-              userTileName: tile.tileName,
-              goalCycle: tile.goalCycle,
-              goalHours: tile.goalHours,
-              activityOptions: tile.activityOptions,
-              cycles: [newCycle]
-            }
-            userRegimenTiles.push(userTile);
-          })
+          // Create a user regimen
+          let userRegimen = await UserRegimen.create({
+            userId: user._id,
+            userName: userName,
+            fromRegimen: regimen,
+            userRegimenName: regimen.regimenName,
+            userTiles: userRegimenTiles
+          });
+
+          user.userRegimen = userRegimen;
+
+          let newUser = await user.save();
+          res.status(200).send(newUser);
+        } else {
+          res.status(200).send(user);
         }
-
-        // Create a user regimen
-        let userRegimen = await UserRegimen.create({
-          userId: user._id,
-          fromRegimen: regimen,
-          userRegimenName: regimen.regimenName,
-          userTiles: userRegimenTiles
-        });
-
-        await User.findByIdAndUpdate(user._id, { userRegimen: userRegimen });
 
         // add new user to the admin's list
         let admin = await Admin.findById({ _id: decoded.sub });
         updatedUsers = [user, ...admin.users];
         await Admin.findByIdAndUpdate(decoded.sub, { users: updatedUsers });
-        res.status(200).send(user);
-      } else {
-        res.status(409).send('This email is already registered for a user account');
       }
     } catch(err) {
+      console.log(err);
       next(err);
     }
   },
 
-
+  // Get a specific user
   // GET /admin/user/:userId
   get_user: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -132,6 +139,7 @@ module.exports = {
   },
 
 
+  // Edit a specific user's details
   // PUT /admin/user/:userId
   update_user: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -156,7 +164,8 @@ module.exports = {
     }
   },
 
-
+  // Delete a specific user
+  // TO DO: Make sure this user's userRegimens are also deleted
   // DELETE /admin/user/:userId
   delete_user: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -181,6 +190,7 @@ module.exports = {
     }
   },
 
+  // Get a specific userTile with cycle data
   // GET /admin/user/:userId/usertile/:userTileId
   get_user_tile: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -208,6 +218,7 @@ module.exports = {
 
 // MANAGING REGIMENS =======================================================>>
 
+  // Get all regimens associated with this admin
   // GET /admin/regimen
   get_all_regimens: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -222,6 +233,7 @@ module.exports = {
     }
   },
 
+  // Create a new regimen, to be used as a template for userRegimens
   // POST /admin/regimen
   create_regimen: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -240,7 +252,7 @@ module.exports = {
     }
   },
 
-
+  // Get a specific regimen
   // GET /admin/regimen/:regimenId
   get_regimen: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -262,7 +274,7 @@ module.exports = {
     }
   },
 
-
+  // Update regimen (used in the app to update the regimen's name)
   // PUT /admin/regimen/:regimenId
   update_regimen: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -275,6 +287,13 @@ module.exports = {
       if (regimen) {
         if (regimen.adminId == decoded.sub) {
           let updatedRegimen = await Regimen.findByIdAndUpdate(regimenId, props, {new: true});
+
+          // Also updates user regimens that are based on this regimen
+          let userRegimens = await UserRegimen.find({ fromRegimen: regimenId});
+          userRegimens.forEach( userRegimen => {
+            userRegimen.userRegimenName = props.regimenName;
+            userRegimen.save();
+          })
           res.status(200).send(updatedRegimen);
         } else {
           res.status(403).send('You do not have administrative access to this regimen');
@@ -287,7 +306,7 @@ module.exports = {
     }
   },
 
-
+  // TO DO: Decide whether or not this should delete the user regimens too
   // DELETE /admin/regimen/:regimenId
   delete_regimen: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -312,7 +331,7 @@ module.exports = {
     }
   },
 
-
+  // Get all of the userRegimens that were created with this regimen
   // GET /admin/regimen/:regimenId/users
   get_user_regimens: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -339,6 +358,7 @@ module.exports = {
 
 // MANAGING TILES ===========================================================>>
 
+  // Add a tile (template) to an existing regimen
   // POST /admin/regimen/:regimenId
   create_tile: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -351,8 +371,29 @@ module.exports = {
 
       if (regimen) {
         if (regimen.adminId == decoded.sub) {
-          regimen.tiles = [...regimen.tiles, tile];
+          regimen.tiles = [tile, ...regimen.tiles];
           let updatedRegimen = await regimen.save();
+
+          let newTile = updatedRegimen.tiles[0];
+
+          // If there are existing userRegimens based on this regimen, add a
+          // matching userTile to each
+          let userRegimens = await UserRegimen.find({ fromRegimen: regimenId});
+          if (userRegimens) {
+            userRegimens.forEach( userRegimen => {
+              let newUserTile = {
+                userName: userRegimen.userName,
+                fromTile: newTile,
+                userTileName: newTile.tileName,
+                activityOptions: newTile.activityOptions,
+                goalCycle: newTile.goalCycle,
+                goalHours: newTile.goalHours
+              }
+              userRegimen.userTiles = [newUserTile, ...userRegimen.userTiles];
+              userRegimen.save();
+            });
+          }
+
           res.status(200).send(updatedRegimen);
         } else {
           res.status(403).send('You do not have administrative access to this regimen');
@@ -379,6 +420,21 @@ module.exports = {
         if (regimen.adminId == decoded.sub) {
           regimen.tiles = regimen.tiles.filter(tile => tile._id != tileId);
           let updatedRegimen = await regimen.save();
+
+          // If there are user regimens based on this regimen, remove the matching
+          // userTile from each userRegimen
+
+          // TO DO: Alert admin and user that this will delete records
+
+          let userRegimens = await UserRegimen.find({ fromRegimen: regimenId});
+
+          if (userRegimens) {
+            userRegimens.forEach(userRegimen => {
+              userRegimen.userTiles = userRegimen.userTiles.filter(userTile => userTile.fromTile != tileId);
+              userRegimen.save();
+            });
+          }
+
           res.status(200).send(updatedRegimen);
         } else {
           res.status(403).send('You do not have administrative access to this regimen');
@@ -397,27 +453,51 @@ module.exports = {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
     const { regimenId, tileId } = req.params;
-
-    let updatedTile = {
-      tileName: req.body.tileName,
-      mode: req.body.mode,
-      activityOptions: req.body.activityOptions,
-      continuousHours: req.body.continuousHours,
-      continuousDays: req.body.continuousDays,
-      goalHours: req.body.goalHours,
-      goalCycle: req.body.goalCycle
-    }
+    const { tileName, mode, activityOptions, goalHours, goalCycle} = req.body;
 
     try {
       const regimen = await Regimen.findById(regimenId);
 
+
       if (regimen) {
+
+        // Update regimen tile
         if (regimen.adminId == decoded.sub) {
-          regimen.tiles.forEach( (tile, i) => {
-            if (tile._id == tileId) { regimen.tiles[i] = updatedTile }
+
+          regimen.tiles.forEach((tile, i) => {
+            if (tile._id == tileId) {
+              tile.tileName = tileName;
+              tile.activityOptions = activityOptions;
+              tile.goalHours = goalHours;
+              tile.goalCycle = goalCycle;
+          }
           });
+
           let updatedRegimen = await regimen.save({new: true});
+
+          // // If there are existing userRegimens based on this regimen
+          let userRegimens = await UserRegimen.find({ fromRegimen: regimenId});
+
+          if (userRegimens) {
+           // Repeat for each userRegimen based on this regimen
+           userRegimens.forEach(userRegimen => {
+
+              let tileIndex = userRegimen.userTiles.findIndex(userTile => {
+                return userTile.fromTile == tileId;
+              });
+
+              userRegimen.userTiles[tileIndex].userTileName = tileName;
+              userRegimen.userTiles[tileIndex].activityOptions = activityOptions;
+              userRegimen.userTiles[tileIndex].goalHours = goalHours;
+              userRegimen.userTiles[tileIndex].goalCycle = goalCycle;
+
+              userRegimen.save();
+
+            });
+          }
+
           res.status(200).send(updatedRegimen);
+
         } else {
           res.status(403).send('You do not have administrative access to this regimen');
         }

@@ -109,6 +109,7 @@ module.exports = {
           thisEntryCycle.cycleEntries = [entry, ...thisEntryCycle.cycleEntries];
 
           // If there are no entries yet or it does not fit in an existing cycle, create a new cycle
+          // Client-side rendering of the date picker will make sure there are no gaps in the cycle
         } else if (cycles.length == 0 || (!(thisEntryCycle) && moment(entry.entryDate).isAfter(tile.cycles[lastCycle].cycleStartDate))) {
 
           let newCycle = {
@@ -120,6 +121,8 @@ module.exports = {
 
           tile.cycles = [newCycle, ...tile.cycles];
         }
+
+        // Right now, NOTHING happens if the entry comes BEFORE an existing cycle
 
         let updatedRegimen = await regimen.save();
         res.status(200).send(tile);

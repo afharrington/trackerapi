@@ -17,10 +17,12 @@ module.exports = {
 // ADMIN AUTHORIZATION =======================================================>
 
   // POST /admin/login
-  login (req, res, next) {
+  admin_login (req, res, next) {
     const token = tokenForUser(req.user);
-    res.send({ token: token, firstName: req.user.firstName } );
+    res.send({ token: token, firstName: req.user.firstName, lastName: req.user.lastName } );
   },
+
+
 
   // POST /admin
   create_admin: async (req, res, next) => {
@@ -30,7 +32,7 @@ module.exports = {
       if (!existingAdmin) {
         let newAdmin = await Admin.create(adminProps);
         const token = tokenForUser(newAdmin);
-        res.status(200).send({ token: token, firstName: newAdmin.firstName });
+        res.status(200).send({ token: token, firstName: newAdmin.firstName, lastName: newAdmin.lastName });
       } else {
         res.status(409).send('This email is already registered for an admin account');
       }
@@ -39,6 +41,29 @@ module.exports = {
     }
   },
 
+  // PUT /admin/register
+  register_admin: async (req, res, next) => {
+    const adminProps = req.body;
+    try {
+      let existingAdmin = await Admin.findOne({ code: adminProps.code });
+      if (existingAdmin) {
+        if (Number(adminProps.code) !== Number(existingAdmin.code)) {
+          res.status(409).send('Email and registration code do not match.');
+        } else {
+          existingAdmin.password = adminProps.password;
+          existingAdmin.password = adminProps.firstName;
+          existingAdmin.password = adminProps.lastName;
+          let updatedAdmin = await existingAdmin.save();
+          const token = tokenForUser(updatedAdmin);
+          res.status(200).send({ token: token, firstName: updatedAdmin.firstName, lastName: updatedAdmin.lastName });
+        }
+      } else if (!existingAdmin) {
+        res.status(300).send('3up member not found.');
+      }
+    } catch (err) {
+      next(err);
+    }
+  },
 
   // GET /admin
   get_admin: async (req, res, next) => {
@@ -66,17 +91,40 @@ module.exports = {
     } catch(err) {
       next(err);
     }
-  }
+  },
+
+
+// USER AUTHORIZATION =======================================================>
+
+  // POST /user/login
+  user_login (req, res, next) {
+    const token = tokenForUser(req.user);
+    res.send({ token: token, firstName: req.user.firstName, lastName: req.user.lastName } );
+  },
+
+  // PUT /user/register
+  register_user: async (req, res, next) => {
+    const userProps = req.body;
+    try {
+      let existingUser = await User.findOne({ code: userProps.code });
+      if (existingUser) {
+        if (Number(userProps.code) !== Number(existingUser.code)) {
+          res.status(409).send('Email and registration code do not match.');
+        } else {
+          existingUser.password = userProps.password;
+          existingUser.code = '00000';
+
+          let updatedUser = await existingUser.save();
+          const token = tokenForUser(updatedUser);
+          res.status(200).send({ token: token, firstName: updatedUser.firstName, lastName: updatedUser.lastName });
+        }
+      } else if (!existingUser) {
+        res.status(300).send('3up member not found.');
+      }
+    } catch (err) {
+      next(err);
+    }
+  },
+
 
 }
-
-
-// // USER AUTHORIZATION ======================================================>
-//
-//   // POST /login
-//   login_user (req, res, next) {
-//     // User is already authorized via passport
-//     const token = tokenForUser(req.user);
-//     res.send({ token: token, email: req.user.email } );
-//   }
-// }

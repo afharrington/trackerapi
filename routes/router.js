@@ -23,8 +23,11 @@ module.exports = function(app) {
   app.post('/admin', auth.create_admin);
   app.get('/admin', requireAdminAuth, auth.get_admin);
   app.put('/admin', requireAdminAuth, auth.update_admin);
-  app.post('/admin/login', requireAdminLogin, auth.login);
-  app.post('/login', requireUserLogin, auth.login);
+  app.post('/admin/login', requireAdminLogin, auth.admin_login);
+  app.post('/user/login', requireUserLogin, auth.user_login);
+  app.put('/admin/register', auth.register_admin);
+  app.put('/user/register', auth.register_user);
+
 
   // ADMIN ROUTES ===========================================================>>
 
