@@ -66,8 +66,10 @@ module.exports = {
             regimen.tiles.forEach( tile => {
 
               // Start a new cycle when you start a new user regimen
+              // CHANGE THIS TO TODAY'S DATE AFTER TESTING
               let newCycle = {
-                cycleStartDate: new Date(),
+                cycleStartDate: new Date('2017-09-01'),
+                
                 cycleLengthInDays: tile.goalCycle,
                 cycleGoalInHours: tile.goalHours,
                 cycleTotalMinutes: 0,
@@ -165,7 +167,6 @@ module.exports = {
   },
 
   // Delete a specific user
-  // TO DO: Make sure this user's userRegimens are also deleted
   // DELETE /admin/user/:userId
   delete_user: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -175,10 +176,17 @@ module.exports = {
 
     try {
       const user = await User.findById(userId);
+
       if (user) {
         if (user.adminId == decoded.sub) {
-          await User.findByIdAndRemove(userId)
+          await User.findByIdAndRemove(userId);
+
+          // Also delete the userRegimen associated with this user
+          let userRegimen = await UserRegimen.findOne({ userId: userId});
+          await UserRegimen.findByIdAndRemove(userRegimen._id);
+
           res.status(200).send('User successfully deleted');
+
         } else {
           res.status(403).send('You do not have administrative access to this user');
         }

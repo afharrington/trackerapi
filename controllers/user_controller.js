@@ -93,38 +93,58 @@ module.exports = {
     try {
       let regimen = await UserRegimen.findById(regId);
       if (regimen.userId == decoded.sub) {
-        let today = new Date();
+
         let tile = regimen.userTiles.find(tile => tile._id == tileId);
         let cycles = tile.cycles;
-        let lastCycle = tile.cycles.length - 1;
 
-        // Check if the entry fits into an existing cycle
+        // See if the entry dates fit within an existing cycle
         let thisEntryCycle = cycles.find(cycle => {
           let cycleStartDate = cycle.cycleStartDate;
           let cycleEndDate = cycle.cycleEndDate;
           return moment(entry.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]');
         });
+        
 
+        // Function Start ---------------------------->>
+        function createNewCycle(firstCycleStartDate) {
+          // If current date is within most recent cycle
+          if (moment(entry.entryDate).isSameOrAfter(firstCycleStartDate)) {
+            return;
+          } else {
+            let cycleStartDate = moment(firstCycleStartDate).subtract((tile.goalCycle + 1), 'days');
+            let newCycle = {
+              cycleStartDate: cycleStartDate,
+              cycleLengthInDays: tile.goalCycle,
+              cycleGoalInHours: tile.goalHours,
+              cycleTotalMinutes: 0
+            }
+            // cycleEndDate and cycleNextDate will be created by Mongoose middleware (see cycle schema)
+            tile.cycles = [...tile.cycles, newCycle];
+            return createNewCycle(newCycle.cycleStartDate);
+          };
+        }
+        // Function End ---------------------------->>
+
+
+        // If entry fits in an existing cycle, add the entry
         if (thisEntryCycle) {
           thisEntryCycle.cycleEntries = [entry, ...thisEntryCycle.cycleEntries];
+        } else {
+          let firstCycleStartDate = tile.cycles[cycles.length-1].cycleStartDate;
 
-          // If there are no entries yet or it does not fit in an existing cycle, create a new cycle
-          // Client-side rendering of the date picker will make sure there are no gaps in the cycle
-        } else if (cycles.length == 0 || (!(thisEntryCycle) && moment(entry.entryDate).isAfter(tile.cycles[lastCycle].cycleStartDate))) {
+          // Create cycles until the new entry fits in one of them
+          createNewCycle(firstCycleStartDate);
 
-          let newCycle = {
-            cycleStartDate: new Date(entry.entryDate),
-            cycleEntries: [entry],
-            cycleLengthInDays: tile.goalCycle,
-            cycleGoalInHours: tile.goalHours
-          }
-
-          tile.cycles = [newCycle, ...tile.cycles];
+          // See if the entry dates fit within an existing cycle
+          thisEntryCycle = tile.cycles.find(cycle => {
+            let cycleStartDate = cycle.cycleStartDate;
+            let cycleEndDate = cycle.cycleEndDate;
+            return moment(entry.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]');
+          });
+          thisEntryCycle.cycleEntries = [entry, ...thisEntryCycle.cycleEntries];
         }
 
-        // Right now, NOTHING happens if the entry comes BEFORE an existing cycle
-
-        let updatedRegimen = await regimen.save();
+        await regimen.save();
         res.status(200).send(tile);
       } else {
         res.status(403).send('You do not have access to this regimen');
@@ -145,13 +165,38 @@ module.exports = {
       let regimen = await UserRegimen.findById(regId);
       if (regimen.userId == decoded.sub) {
         let tile = regimen.userTiles.find(tile => tile._id == tileId);
+        let recentCycle = tile.cycles[0];
+
+        // Recursively create cycles at the set interval, between the most recent cycle and today
+        function createNewCycle(mostRecentCycleNextDate) {
+          // If current date is within most recent cycle
+          if (moment().isBefore(mostRecentCycleNextDate)) {
+            return;
+
+          // Else if there is a gap between most recent cycle and today
+          } else {
+            let newCycle = {
+              cycleStartDate: mostRecentCycleNextDate,
+              cycleLengthInDays: tile.goalCycle,
+              cycleGoalInHours: tile.goalHours,
+              cycleTotalMinutes: 0
+            }
+
+            // cycleEndDate and cycleNextDate will be created by Mongoose middleware (see cycle schema)
+            tile.cycles = [newCycle, ...tile.cycles];
+            let cycleNextDate = moment(newCycle.cycleStartDate).add(tile.goalCycle + 1, 'days')
+            return createNewCycle(cycleNextDate);
+          };
+        }
+
+        createNewCycle(recentCycle.cycleNextDate);
+        await regimen.save();
         res.status(200).send(tile);
       }
     } catch(err) {
       next(err);
     }
   },
-
 
 
   // PUT /admin/user/:userId
