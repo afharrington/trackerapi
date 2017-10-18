@@ -103,7 +103,7 @@ module.exports = {
           let cycleEndDate = cycle.cycleEndDate;
           return moment(entry.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]');
         });
-        
+
 
         // Function Start ---------------------------->>
         function createNewCycle(firstCycleStartDate) {
@@ -244,7 +244,6 @@ module.exports = {
         entry.notes = req.body.notes;
         entry.minutes = req.body.minutes
 
-
         // sort entries in order
         cycle.cycleEntries = cycle.cycleEntries.sort((a, b) => a.entryDate - a.entryDate);
 
@@ -272,16 +271,15 @@ module.exports = {
         let entry = cycle.cycleEntries.find(entry => entry._id == entryId);
         let entryMinutes = entry.minutes;
 
-
         cycle.cycleEntries = cycle.cycleEntries.filter(entry => entry._id != entryId);
 
-        // This deletes the entire cycle if there are no entries in it - keep disabled for now
+        // // This deletes the entire cycle if there are no entries in it - keep disabled for now
+        cycle.cycleTotalMinutes = cycle.cycleTotalMinutes - entryMinutes;
+        if (cycle.cycleEntries.length == 0) {
+          cycle.color = 0;
+        }
 
-        // if (cycle.cycleEntries.length == 0) {
-        //   tile.cycles = tile.cycles.filter(existingCycle => existingCycle._id !== cycle._id);
-        // }
-
-        regimen.save();
+        await regimen.save();
         res.status(200).send(tile);
       }
     } catch(err) {

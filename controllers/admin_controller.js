@@ -68,8 +68,7 @@ module.exports = {
               // Start a new cycle when you start a new user regimen
               // CHANGE THIS TO TODAY'S DATE AFTER TESTING
               let newCycle = {
-                cycleStartDate: new Date('2017-09-01'),
-                
+                cycleStartDate: new Date(),
                 cycleLengthInDays: tile.goalCycle,
                 cycleGoalInHours: tile.goalHours,
                 cycleTotalMinutes: 0,
@@ -327,7 +326,7 @@ module.exports = {
       if (regimen) {
         if (regimen.adminId == decoded.sub) {
           await Regimen.findByIdAndRemove(regimenId)
-          res.status(200).send('Regimen successfully deleted');
+          res.status(200).send(regimenId);
         } else {
           res.status(403).send('You do not have administrative access to this regimen');
         }
