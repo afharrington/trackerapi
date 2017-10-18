@@ -99,8 +99,8 @@ module.exports = {
 
         // See if the entry dates fit within an existing cycle
         let thisEntryCycle = cycles.find(cycle => {
-          let cycleStartDate = cycle.cycleStartDate;
-          let cycleEndDate = cycle.cycleEndDate;
+          let cycleStartDate = moment(cycle.cycleStartDate).startOf('day');
+          let cycleEndDate = moment(cycle.cycleEndDate).startOf('day');
           return moment(entry.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]');
         });
 
@@ -139,8 +139,10 @@ module.exports = {
           thisEntryCycle = tile.cycles.find(cycle => {
             let cycleStartDate = cycle.cycleStartDate;
             let cycleEndDate = cycle.cycleEndDate;
+            console.log("cycle start", cycleStartDate, 'cycle end', cycleEndDate, 'entry', entry.entryDate);
             return moment(entry.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]');
           });
+
           thisEntryCycle.cycleEntries = [entry, ...thisEntryCycle.cycleEntries];
         }
 
