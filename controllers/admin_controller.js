@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const jwt = require('jwt-simple');
 const config = require('../config/keys.js');
 const ExtractJwt = require('passport-jwt').ExtractJwt;
+const _ = require('lodash');
 
 // Mongoose models and schemas
 const Admin = require('../models/Admin/admin_model');
@@ -31,7 +32,7 @@ module.exports = {
           }
         });
       let users = admin.users;
-      res.status(200).send(users);
+      res.status(200).send(users); 
     } catch(err) {
       next(err);
     }
@@ -101,15 +102,18 @@ module.exports = {
           user.userRegimen = userRegimen;
 
           let newUser = await user.save();
-          res.status(200).send(newUser);
+
         } else {
           res.status(200).send(user);
         }
 
-        // add new user to the admin's list
-        let admin = await Admin.findById({ _id: decoded.sub });
+        // Add new user to the admin's list and keep sorted alphabetically
+        let admin = await Admin.findById({ _id: decoded.sub }).populate('users');
         updatedUsers = [user, ...admin.users];
+        updatedUsers = _.sortBy(updatedUsers, o => o.firstName);
+
         await Admin.findByIdAndUpdate(decoded.sub, { users: updatedUsers });
+        res.status(200).send(updatedUsers);
       }
     } catch(err) {
       console.log(err);
@@ -179,12 +183,11 @@ module.exports = {
       if (user) {
         if (user.adminId == decoded.sub) {
           await User.findByIdAndRemove(userId);
+          res.status(200).send(userId);
 
           // Also delete the userRegimen associated with this user
           let userRegimen = await UserRegimen.findOne({ userId: userId});
           await UserRegimen.findByIdAndRemove(userRegimen._id);
-
-          res.status(200).send('User successfully deleted');
 
         } else {
           res.status(403).send('You do not have administrative access to this user');
@@ -250,10 +253,15 @@ module.exports = {
 
     try {
       let regimen = await Regimen.create(props);
-      let admin = await Admin.findByIdAndUpdate({ _id: decoded.sub });
+      let admin = await Admin.findByIdAndUpdate({ _id: decoded.sub }).populate('regimens');
+
+      // Add new regimen to list and sort alphabetically
       updatedRegimens = [regimen, ...admin.regimens];
-      await Admin.findByIdAndUpdate(admin._id, { regimens: updatedRegimens});
-      res.status(200).send(regimen);
+      updatedRegimens = _.sortBy(updatedRegimens, o => o.regimenName);
+
+      await Admin.findByIdAndUpdate(decoded.sub, { regimens: updatedRegimens });
+
+      res.status(200).send(updatedRegimens);
     } catch(err) {
       next(err);
     }

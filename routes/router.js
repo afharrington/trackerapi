@@ -60,6 +60,7 @@ module.exports = function(app) {
   app.get('/user', requireUserAuth, user.get_user);
   app.put('/', requireUserAuth, user.update_user);
 
+  app.post('/user/forgot', auth.forgot_password);
   // Accessing all user regimens
   // app.get('/user', requireUserAuth, user.get_regimens);
 

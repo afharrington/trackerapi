@@ -2,6 +2,9 @@
   "name": "threeup_api",
   "version": "1.0.0",
   "main": "config.js",
+  "engines": {
+    "node": "8.2.1"
+  },
   "scripts": {
     "test": "NODE_ENV=test nodemon --exec 'mocha -R min'",
     "start": "node index.js",
@@ -22,9 +25,11 @@
     "express-session": "^1.15.5",
     "http-proxy": "^1.16.2",
     "jwt-simple": "^0.5.1",
+    "lodash": "^4.17.4",
     "mocha": "^3.5.0",
     "moment": "^2.18.1",
     "mongoose": "^4.11.5",
+    "nodemailer": "^4.2.0",
     "passport": "^0.3.2",
     "passport-jwt": "^2.2.1",
     "passport-local": "^1.0.0",

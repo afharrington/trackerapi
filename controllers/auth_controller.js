@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const Admin = require('../models/Admin/admin_model');
 const User = require('../models/User/user_model');
-
 const jwt = require('jwt-simple');
 const config = require('../config/keys.js');
 
@@ -21,8 +20,6 @@ module.exports = {
     const token = tokenForUser(req.user);
     res.send({ token: token, firstName: req.user.firstName, lastName: req.user.lastName } );
   },
-
-
 
   // POST /admin
   create_admin: async (req, res, next) => {
@@ -100,6 +97,48 @@ module.exports = {
   user_login (req, res, next) {
     const token = tokenForUser(req.user);
     res.send({ token: token, firstName: req.user.firstName, lastName: req.user.lastName } );
+  },
+
+  // POST /user/forgot
+  forgot_password (req, res, next) {
+    const nodemailer = require('nodemailer');
+
+    // Generate test SMTP service account from ethereal.email
+    // Only needed if you don't have a real mail account for testing
+    nodemailer.createTestAccount((err, account) => {
+
+    // create reusable transporter object using the default SMTP transport
+    let transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false, // true for 465, false for other ports
+        auth: {
+            user: account.user, // generated ethereal user
+            pass: account.pass  // generated ethereal password
+        }
+    });
+
+    // setup email data with unicode symbols
+    let mailOptions = {
+        from: '"Anna" <anna@pineappleny.com>', // sender address
+        to: 'annafkh@gmail.com', // list of receivers
+        subject: 'Reset password', // Subject line
+        text: 'Here you go!', // plain text body
+        html: '<b>HTML here you go</b>' // html body
+    };
+
+    // send mail with defined transport object
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+            return console.log(error);
+        }
+        console.log('Message sent: %s', info.messageId);
+        // Preview only available when sending through an Ethereal account
+        console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+
+    });
+  });
+    res.status(200).send();
   },
 
   // PUT /user/register

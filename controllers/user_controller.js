@@ -139,7 +139,6 @@ module.exports = {
           thisEntryCycle = tile.cycles.find(cycle => {
             let cycleStartDate = cycle.cycleStartDate;
             let cycleEndDate = cycle.cycleEndDate;
-            console.log("cycle start", cycleStartDate, 'cycle end', cycleEndDate, 'entry', entry.entryDate);
             return moment(entry.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]');
           });
 
