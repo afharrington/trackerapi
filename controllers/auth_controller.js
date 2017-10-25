@@ -28,8 +28,8 @@ module.exports = {
       let existingAdmin = await Admin.findOne({ email: adminProps.email });
       if (!existingAdmin) {
         let newAdmin = await Admin.create(adminProps);
-        const token = tokenForUser(newAdmin);
-        res.status(200).send({ token: token, firstName: newAdmin.firstName, lastName: newAdmin.lastName });
+        // const token = tokenForUser(newAdmin);
+        res.status(200).send({firstName: newAdmin.firstName, lastName: newAdmin.lastName, email: newAdmin.email });
       } else {
         res.status(409).send('This email is already registered for an admin account');
       }
@@ -41,15 +41,15 @@ module.exports = {
   // PUT /admin/register
   register_admin: async (req, res, next) => {
     const adminProps = req.body;
+
     try {
-      let existingAdmin = await Admin.findOne({ code: adminProps.code });
+      let existingAdmin = await Admin.findOne({ email: adminProps.email});
       if (existingAdmin) {
         if (Number(adminProps.code) !== Number(existingAdmin.code)) {
           res.status(409).send('Email and registration code do not match.');
         } else {
           existingAdmin.password = adminProps.password;
-          existingAdmin.password = adminProps.firstName;
-          existingAdmin.password = adminProps.lastName;
+          existingAdmin.code = 'Gf4et4*h3(tn#ndigw3';
           let updatedAdmin = await existingAdmin.save();
           const token = tokenForUser(updatedAdmin);
           res.status(200).send({ token: token, firstName: updatedAdmin.firstName, lastName: updatedAdmin.lastName });
@@ -151,8 +151,8 @@ module.exports = {
           res.status(409).send('Email and registration code do not match.');
         } else {
           existingUser.password = userProps.password;
-          existingUser.code = '00000';
-
+          existingUser.code = null;
+          // existingUser.code = 'r3&9S!!Btjd%3r*L';
           let updatedUser = await existingUser.save();
           const token = tokenForUser(updatedUser);
           res.status(200).send({ token: token, firstName: updatedUser.firstName, lastName: updatedUser.lastName });
