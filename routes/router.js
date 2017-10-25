@@ -37,22 +37,28 @@ module.exports = function(app) {
   app.get('/admin/user/:userId', requireAdminAuth, admin.get_user);
   app.put('/admin/user/:userId', requireAdminAuth, admin.update_user);
   app.delete('/admin/user/:userId', requireAdminAuth, admin.delete_user);
-  app.get('/admin/user/:userId/usertile/:userTileId', requireAdminAuth, admin.get_user_tile);
 
   // Managing regimens
   app.get('/admin/regimen', requireAdminAuth, admin.get_all_regimens);
   app.post('/admin/regimen', requireAdminAuth, admin.create_regimen);
   app.get('/admin/regimen/:regimenId', requireAdminAuth, admin.get_regimen);
-  app.get('/admin/regimen/:regimenId/users', requireAdminAuth, admin.get_user_regimens);
   app.put('/admin/regimen/:regimenId', requireAdminAuth, admin.update_regimen);
   app.delete('/admin/regimen/:regimenId', requireAdminAuth, admin.delete_regimen);
-  app.post('/admin/regimen/:regimenId', requireAdminAuth, admin.create_tile);
-  app.get('/admin/regimen/:regimenId/tile/:tileId/users', requireAdminAuth, admin.get_user_tiles);
+  app.get('/admin/regimen/:regimenId/users', requireAdminAuth, admin.get_user_regimens);
 
   // Managing tiles
+  app.post('/admin/regimen/:regimenId', requireAdminAuth, admin.create_tile);
   app.post('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.add_activity);
   app.put('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.update_tile);
   app.delete('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.delete_tile);
+  app.get('/admin/regimen/:regimenId/tile/:tileId/users', requireAdminAuth, admin.get_user_tiles);
+
+  // Managing specific user tiles and regimens
+  app.get('/admin/user/:userId/usertile/:userTileId', requireAdminAuth, admin.get_user_tile);
+  app.post('/admin/user/:userId/reg/:regId/tile/:tileId', requireAdminAuth, admin.add_entry);
+  app.put('/admin/user/:userId/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId', requireAdminAuth, admin.update_entry);
+  app.delete('/admin/user/:userId/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId', requireAdminAuth, admin.delete_entry);
+
 
 // USER ROUTES ===========================================================>>
 
