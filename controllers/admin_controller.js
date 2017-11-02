@@ -158,6 +158,10 @@ module.exports = {
       if (user) {
         if (user.adminId == decoded.sub) {
           let updatedUser = await User.findByIdAndUpdate(userId, props, {new: true});
+
+
+
+
           res.status(200).send(updatedUser);
         } else {
           res.status(403).send('You do not have administrative access to this user');
