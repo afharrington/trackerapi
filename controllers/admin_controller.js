@@ -25,11 +25,16 @@ module.exports = {
 
     try {
       let admin = await Admin.findById(decoded.sub)
+        // Populate users and then the userRegimens associated with them
         .populate({
           path: 'users',
           populate: {
             path: 'userRegimens',
             model: 'userRegimen'
+          },
+          populate: {
+            path: 'regimens',
+            model: 'regimen'
           }
         });
       let users = admin.users;
@@ -46,7 +51,6 @@ module.exports = {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
     let props = req.body; // user details
-    props.adminId = decoded.sub; // adds adminId to user account
 
     try {
       let existingUser = await User.findOne({ email: props.email });
@@ -54,21 +58,28 @@ module.exports = {
         res.send('This email is already registered for a user account');
       } else {
 
-        let user = await User.create(props);
+        // Create a new user
+        let user = await User.create({
+          firstName: props.firstName,
+          lastName: props.lastName,
+          code: props.code,
+          email: props.email,
+          sport: props.sport,
+          adminId: decoded.sub
+        });
 
+        // If a regimen was assigned, create a user regimen
         if (props.regimen) {
-          let regimen = await Regimen.findById({ _id: props.regimen });
-          user.regimen = { regimen: regimen._id, regimenName: regimen.regimenName };
+          let regimen = await Regimen.findById(props.regimen);
+          user.regimens = [regimen];
           let userName = `${user.firstName} ${user.lastName}`;
 
           // Based on that regimen, create an array of userRegimenTiles
           let userRegimenTiles = [];
-
           if (regimen.tiles) {
             regimen.tiles.forEach( tile => {
 
               // Start a new cycle when you start a new user regimen
-              // CHANGE THIS TO TODAY'S DATE AFTER TESTING
               let newCycle = {
                 cycleStartDate: new Date(),
                 cycleLengthInDays: tile.goalCycle,
@@ -100,12 +111,8 @@ module.exports = {
             userTiles: userRegimenTiles
           });
 
-          user.userRegimen = userRegimen;
-
+          user.userRegimens = [userRegimen];
           let newUser = await user.save();
-
-        } else {
-          res.status(200).send(user);
         }
 
         // Add new user to the admin's list and keep sorted alphabetically
@@ -114,6 +121,8 @@ module.exports = {
         updatedUsers = _.sortBy(updatedUsers, o => o.firstName);
 
         await Admin.findByIdAndUpdate(decoded.sub, { users: updatedUsers });
+
+        // Respond with ALL this admin's users, including the new user
         res.status(200).send(updatedUsers);
       }
     } catch(err) {
@@ -129,7 +138,7 @@ module.exports = {
     const decoded = jwt.decode(header, config.secret);
 
     try {
-      let user = await User.findById({ _id: req.params.userId }).populate('userRegimen');
+      let user = await User.findById({ _id: req.params.userId }).populate('userRegimens').populate('regimens');
       if (user) {
         if (user.adminId === decoded.sub) {
           res.status(200).send(user);
@@ -157,11 +166,76 @@ module.exports = {
       const user = await User.findById(userId);
       if (user) {
         if (user.adminId == decoded.sub) {
-          let updatedUser = await User.findByIdAndUpdate(userId, props, {new: true});
 
+          user.adminId = user.adminId;
+          user.firstName = props.firstName ? props.firstName : user.firstName;
+          user.lastName = props.lastName ? props.lastName : user.lastName;
+          user.email = props.email ? props.email : user.email;
+          user.sport = props.sport ? props.sport : user.sport;
+          let userName = `${user.firstName} ${user.lastName}`;
 
+          // If the regimen selected does not match the current active regimen
+          if (props.regimen != user.regimens[user.activeRegimen]) {
 
+            // Look for an existing regimen that matches
+            let existingRegimenIndex = user.regimens.findIndex((regimen) => {
+              return regimen == props.regimen;
+            });
 
+            // If the regimen exists, set it to be the activeRegimen
+            if (existingRegimenIndex >= 0) {
+              user.activeRegimen = existingRegimenIndex;
+
+            // Otherwise create a new user regimen and add it to the front of the list, setting the
+            // activeRegimen to 0
+            } else {
+              user.activeRegimen = 0;
+
+              let newRegimen = await Regimen.findById(props.regimen);
+              user.regimen = newRegimen;
+
+              let userRegimenTiles = [];
+
+              if (newRegimen.tiles) {
+                newRegimen.tiles.forEach(tile => {
+
+                let newCycle = {
+                  cycleStartDate: new Date(),
+                  cycleLengthInDays: tile.goalCycle,
+                  cycleGoalInHours: tile.goalHours,
+                  cycleTotalMinutes: 0,
+                  color: 0
+                }
+
+                let userTile = {
+                  userName: userName,
+                  userId: user._id,
+                  fromTile: tile,
+                  userTileName: tile.tileName,
+                  goalCycle: tile.goalCycle,
+                  goalHours: tile.goalHours,
+                  activityOptions: tile.activityOptions,
+                  cycles: [newCycle]
+                }
+                userRegimenTiles.push(userTile);
+              });
+              }
+
+              // Create a user regimen
+              let userRegimen = await UserRegimen.create({
+                userId: user._id,
+                userName: userName,
+                fromRegimen: newRegimen._id,
+                userRegimenName: newRegimen.regimenName,
+                userTiles: userRegimenTiles
+              });
+
+              user.userRegimens.unshift(userRegimen);
+              user.regimens.unshift(newRegimen);
+              }
+            }
+
+          let updatedUser = await user.save();
           res.status(200).send(updatedUser);
         } else {
           res.status(403).send('You do not have administrative access to this user');
@@ -573,10 +647,10 @@ module.exports = {
     const props = req.body;
     const { userId, userTileId } = req.params;
     try {
-      const user = await User.findById(userId).populate('userRegimen');
+      const user = await User.findById(userId).populate('userRegimens');
       if (user) {
         if (user.adminId == decoded.sub) {
-          let tile = user.userRegimen.userTiles.find( userTile => {
+          let tile = user.userRegimens[0].userTiles.find( userTile => {
             return userTile._id == userTileId;
           })
           res.status(200).send(tile);

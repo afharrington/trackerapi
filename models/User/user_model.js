@@ -14,12 +14,17 @@ const userSchema = new Schema({
   password: { type: String },
   sport: { type: String, lowercase: true },
   adminId: String,
-  regimen: {},
-  userRegimen: {
-    type: Schema.Types.ObjectId,
-    ref: 'userRegimen'
-  },
+  regimens: [{ type: Schema.Types.ObjectId, ref: 'regimen'}],
+  userRegimens: [{ type: Schema.Types.ObjectId, ref: 'userRegimen'}],
+  activeRegimen: { type: Number, default: 0 },
   created_date: { type: Date, default: Date.now }
+},{
+  toObject: {
+    virtuals: true
+  },
+  toJSON: {
+    virtuals: true
+  }
 });
 
 
@@ -54,5 +59,9 @@ userSchema.methods.comparePassword = function(candidatePassword, callback) {
     callback(null, isMatch);
   });
 }
+
+userSchema.virtual('activeRegimenName').get(function() {
+  return this.regimens[this.activeRegimen].regimenName;
+});
 
 module.exports = mongoose.model('user', userSchema);
