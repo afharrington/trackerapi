@@ -6,6 +6,7 @@ const userRegimenSchema = new Schema({
   userId: String,
   userName: String,
   userRegimenName: { type: String, lowercase: true },
+  fromRegimenId: String,
   fromRegimen: {
     type: Schema.Types.ObjectId,
     ref: 'regimen'

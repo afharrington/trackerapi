@@ -29,13 +29,14 @@ module.exports = {
         .populate({
           path: 'users',
           populate: {
-            path: 'userRegimens',
+            path: 'activeUserRegimen',
             model: 'userRegimen'
-          },
-          populate: {
-            path: 'regimens',
-            model: 'regimen'
           }
+          // ,
+          // populate: {
+          //   path: 'regimens',
+          //   model: 'regimen'
+          // }
         });
       let users = admin.users;
       res.status(200).send(users);
@@ -68,18 +69,21 @@ module.exports = {
           adminId: decoded.sub
         });
 
-        // If a regimen was assigned, create a user regimen
-        if (props.regimen) {
-          let regimen = await Regimen.findById(props.regimen);
-          user.regimens = [regimen];
+        // If at least one regimen was selected
+        let regimenId = props.regimen;
+        if (regimenId) {
           let userName = `${user.firstName} ${user.lastName}`;
+          let regimen = await Regimen.findById(regimenId);
 
-          // Based on that regimen, create an array of userRegimenTiles
+          user.regimens = [regimen];
+          user.userRegimens = [];
+
+          // Generate user regimen tiles
           let userRegimenTiles = [];
           if (regimen.tiles) {
-            regimen.tiles.forEach( tile => {
+            regimen.tiles.forEach((tile) => {
 
-              // Start a new cycle when you start a new user regimen
+              // Start a new cycle for the user regimen
               let newCycle = {
                 cycleStartDate: new Date(),
                 cycleLengthInDays: tile.goalCycle,
@@ -99,30 +103,29 @@ module.exports = {
                 cycles: [newCycle]
               }
               userRegimenTiles.push(userTile);
-            })
+            });
           }
 
-          // Create a user regimen
+          // Create the new user regimen
           let userRegimen = await UserRegimen.create({
             userId: user._id,
             userName: userName,
             fromRegimen: regimen,
+            fromRegimenId: regimen._id,
             userRegimenName: regimen.regimenName,
-            userTiles: userRegimenTiles
+            userTiles: userRegimenTiles,
           });
 
-          user.userRegimens = [userRegimen];
+          user.userRegimens=[userRegimen];
+          user.activeUserRegimen = userRegimen;
           let newUser = await user.save();
         }
 
         // Add new user to the admin's list and keep sorted alphabetically
         let admin = await Admin.findById({ _id: decoded.sub }).populate('users');
-        updatedUsers = [user, ...admin.users];
+        let updatedUsers = [user, ...admin.users];
         updatedUsers = _.sortBy(updatedUsers, o => o.firstName);
-
         await Admin.findByIdAndUpdate(decoded.sub, { users: updatedUsers });
-
-        // Respond with ALL this admin's users, including the new user
         res.status(200).send(updatedUsers);
       }
     } catch(err) {
@@ -138,7 +141,8 @@ module.exports = {
     const decoded = jwt.decode(header, config.secret);
 
     try {
-      let user = await User.findById({ _id: req.params.userId }).populate('userRegimens').populate('regimens');
+      let user = await User.findById({ _id: req.params.userId }).populate('activeUserRegimen').populate('regimens').populate('userRegimens');
+
       if (user) {
         if (user.adminId === decoded.sub) {
           res.status(200).send(user);
@@ -163,41 +167,37 @@ module.exports = {
     const { userId } = req.params;
 
     try {
-      const user = await User.findById(userId);
+      const user = await User.findById(userId).populate('userRegimens');
       if (user) {
         if (user.adminId == decoded.sub) {
-
           user.adminId = user.adminId;
-          user.firstName = props.firstName ? props.firstName : user.firstName;
-          user.lastName = props.lastName ? props.lastName : user.lastName;
-          user.email = props.email ? props.email : user.email;
-          user.sport = props.sport ? props.sport : user.sport;
+          user.firstName = props.firstName || user.firstName;
+          user.lastName = props.lastName || user.lastName;
+          user.email = props.email || user.email;
+          user.sport = props.sport ||  user.sport;
+          user.code = props.code || user.code;
           let userName = `${user.firstName} ${user.lastName}`;
 
           // If the regimen selected does not match the current active regimen
-          if (props.regimen != user.regimens[user.activeRegimen]) {
+          if (props.regimen != user.activeUserRegimen.fromRegimenId) {
 
             // Look for an existing regimen that matches
-            let existingRegimenIndex = user.regimens.findIndex((regimen) => {
-              return regimen == props.regimen;
+            let newActiveUserRegimen = user.userRegimens.find((userRegimen) => {
+              return userRegimen.fromRegimenId == props.regimen;
             });
 
             // If the regimen exists, set it to be the activeRegimen
-            if (existingRegimenIndex >= 0) {
-              user.activeRegimen = existingRegimenIndex;
+            if (newActiveUserRegimen) {
+              user.activeUserRegimen = newActiveUserRegimen;
 
-            // Otherwise create a new user regimen and add it to the front of the list, setting the
-            // activeRegimen to 0
+            // Otherwise create a new user regimen and set it to be the active
             } else {
-              user.activeRegimen = 0;
 
-              let newRegimen = await Regimen.findById(props.regimen);
-              user.regimen = newRegimen;
+              let regimen = await Regimen.findById(props.regimen);
 
               let userRegimenTiles = [];
-
-              if (newRegimen.tiles) {
-                newRegimen.tiles.forEach(tile => {
+              if (regimen.tiles) {
+                regimen.tiles.forEach(tile => {
 
                 let newCycle = {
                   cycleStartDate: new Date(),
@@ -225,13 +225,15 @@ module.exports = {
               let userRegimen = await UserRegimen.create({
                 userId: user._id,
                 userName: userName,
-                fromRegimen: newRegimen._id,
-                userRegimenName: newRegimen.regimenName,
-                userTiles: userRegimenTiles
+                fromRegimen: regimen,
+                fromRegimenId: regimen._id,
+                userRegimenName: regimen.regimenName,
+                userTiles: userRegimenTiles,
               });
 
-              user.userRegimens.unshift(userRegimen);
-              user.regimens.unshift(newRegimen);
+              user.regimens = [regimen, ...user.regimens];
+              user.userRegimens = [userRegimen,...user.userRegimens];
+              user.activeUserRegimen = userRegimen;
               }
             }
 

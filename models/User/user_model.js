@@ -16,7 +16,7 @@ const userSchema = new Schema({
   adminId: String,
   regimens: [{ type: Schema.Types.ObjectId, ref: 'regimen'}],
   userRegimens: [{ type: Schema.Types.ObjectId, ref: 'userRegimen'}],
-  activeRegimen: { type: Number, default: 0 },
+  activeUserRegimen: { type: Schema.Types.ObjectId, ref: 'userRegimen'},
   created_date: { type: Date, default: Date.now }
 },{
   toObject: {
@@ -60,8 +60,8 @@ userSchema.methods.comparePassword = function(candidatePassword, callback) {
   });
 }
 
-userSchema.virtual('activeRegimenName').get(function() {
-  return this.regimens[this.activeRegimen].regimenName;
-});
+// userSchema.virtual('activeRegimenName').get(function() {
+//   return this.regimens[this.activeRegimen].regimenName;
+// });
 
 module.exports = mongoose.model('user', userSchema);

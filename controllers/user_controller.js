@@ -18,7 +18,7 @@ module.exports = {
 
     try {
       let user = await User.findById({ _id: decoded.sub })
-      .populate('userRegimen');
+      .populate('userRegimens');
       res.status(200).send(user);
     } catch(err) {
       next(err);
