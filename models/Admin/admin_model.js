@@ -24,6 +24,7 @@ const adminSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'regimen'
   }],
+  recentActivity: [],
   created_date: { type: Date, default: Date.now }
 });
 

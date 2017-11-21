@@ -281,6 +281,32 @@ module.exports = {
     }
   },
 
+  // Get a user regimen
+  // GET /admin/user/:userId/reg/:regId
+  get_user_regimen: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+
+    try {
+      let user = await User.findById({ _id: req.params.userId }).populate('userRegimens');
+
+      if (user) {
+        if (user.adminId === decoded.sub) {
+          let userRegimen = user.userRegimens.find(userRegimen => {
+            return userRegimen._id == req.params.regId;
+          })
+          res.status(200).send(userRegimen);
+        } else {
+          res.status(403).send('You do not have administrative access to this user');
+        }
+      } else {
+        res.status(422).send({ error: 'User not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
 
 // MANAGING REGIMENS =======================================================>>
 
@@ -449,17 +475,28 @@ module.exports = {
 
           // If there are existing userRegimens based on this regimen, add a
           // matching userTile to each
-          let userRegimens = await UserRegimen.find({ fromRegimen: regimenId});
+          let userRegimens = await UserRegimen.find({ fromRegimenId: regimenId});
           if (userRegimens) {
             userRegimens.forEach( userRegimen => {
+
+              let newCycle = {
+                cycleStartDate: new Date(),
+                cycleLengthInDays: newTile.goalCycle,
+                cycleGoalInHours: newTile.goalHours,
+                cycleTotalMinutes: 0,
+                color: 0
+              }
+
               let newUserTile = {
                 userName: userRegimen.userName,
                 fromTile: newTile,
                 userTileName: newTile.tileName,
                 activityOptions: newTile.activityOptions,
                 goalCycle: newTile.goalCycle,
-                goalHours: newTile.goalHours
+                goalHours: newTile.goalHours,
+                cycles: [newCycle]
               }
+
               userRegimen.userTiles = [newUserTile, ...userRegimen.userTiles];
               userRegimen.save();
             });
@@ -642,19 +679,24 @@ module.exports = {
 // MANAGING SPECIFIC USER TILES AND REGIMENS =================================================>>
 
   // Get a specific userTile with cycle data
-  // GET /admin/user/:userId/usertile/:userTileId
+  // GET /admin/user/:userId/reg/:regId/usertile/:userTileId
   get_user_tile: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
     const props = req.body;
-    const { userId, userTileId } = req.params;
+    const { userId, regId, userTileId } = req.params;
     try {
       const user = await User.findById(userId).populate('userRegimens');
       if (user) {
         if (user.adminId == decoded.sub) {
-          let tile = user.userRegimens[0].userTiles.find( userTile => {
+          let userRegimen = user.userRegimens.find(userRegimen => {
+            return userRegimen._id == regId;
+          });
+
+          let tile = userRegimen.userTiles.find(userTile => {
             return userTile._id == userTileId;
-          })
+          });
+
           res.status(200).send(tile);
         } else {
           res.status(403).send('You do not have administrative access to this user');
@@ -687,6 +729,7 @@ module.exports = {
         // Check if admin has administrative access to this user's account
         if (user.adminId == decoded.sub) {
 
+          let admin = await Admin.findById(decoded.sub);
           let regimen = await UserRegimen.findById(regId);
           let tile = regimen.userTiles.find(tile => tile._id == tileId);
           let cycles = tile.cycles;
@@ -738,6 +781,12 @@ module.exports = {
             thisEntryCycle.cycleEntries = [entry, ...thisEntryCycle.cycleEntries];
           }
 
+          admin.recentActivity = [entry, ...admin.recentActivity];
+          if (admin.recentActivity.length > 10) {
+            admin.recentActivity.pop();
+          }
+
+          admin.save();
           await regimen.save();
           res.status(200).send(tile);
 

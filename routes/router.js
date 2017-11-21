@@ -46,6 +46,7 @@ module.exports = function(app) {
   app.delete('/admin/regimen/:regimenId', requireAdminAuth, admin.delete_regimen);
   app.get('/admin/regimen/:regimenId/users', requireAdminAuth, admin.get_user_regimens);
 
+
   // Managing tiles
   app.post('/admin/regimen/:regimenId', requireAdminAuth, admin.create_tile);
   app.post('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.add_activity);
@@ -54,10 +55,11 @@ module.exports = function(app) {
   app.get('/admin/regimen/:regimenId/tile/:tileId/users', requireAdminAuth, admin.get_user_tiles);
 
   // Managing specific user tiles and regimens
-  app.get('/admin/user/:userId/usertile/:userTileId', requireAdminAuth, admin.get_user_tile);
+  app.get('/admin/user/:userId/reg/:regId/usertile/:userTileId', requireAdminAuth, admin.get_user_tile);
   app.post('/admin/user/:userId/reg/:regId/tile/:tileId', requireAdminAuth, admin.add_entry);
   app.put('/admin/user/:userId/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId', requireAdminAuth, admin.update_entry);
   app.delete('/admin/user/:userId/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId', requireAdminAuth, admin.delete_entry);
+  app.get('/admin/user/:userId/reg/:regId', requireAdminAuth, admin.get_user_regimen);
 
 
 // USER ROUTES ===========================================================>>
