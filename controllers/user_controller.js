@@ -18,7 +18,7 @@ module.exports = {
 
     try {
       let user = await User.findById({ _id: decoded.sub })
-      .populate('userRegimens');
+      .populate('userRegimens').populate('activeUserRegimen').populate('regimens');
       res.status(200).send(user);
     } catch(err) {
       next(err);
@@ -30,10 +30,16 @@ module.exports = {
   update_user: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
-    const props = req.body;
 
     try {
-      let updatedUser = await User.findByIdAndUpdate(decoded.sub, props, {new: true});
+      const user = await User.findById(decoded.sub)  .populate('userRegimens').populate('activeUserRegimen').populate('regimens');
+
+      user.firstName = req.body.firstName;
+      user.lastName = req.body.lastName;
+      user.email = req.body.email;
+
+      let updatedUser = await user.save();
+
       res.status(200).send(updatedUser);
     } catch(err) {
       next(err);
@@ -201,28 +207,28 @@ module.exports = {
 
 
   // PUT /admin/user/:userId
-  update_user: async (req, res, next) => {
-    const header = req.headers.authorization.slice(4);
-    const decoded = jwt.decode(header, config.secret);
-    const props = req.body;
-    const { userId } = req.params;
-
-    try {
-      const user = await User.findById(userId);
-      if (user) {
-        if (user.adminId == decoded.sub) {
-          let updatedUser = await User.findByIdAndUpdate(userId, props, {new: true});
-          res.status(200).send(updatedUser);
-        } else {
-          res.status(403).send('You do not have administrative access to this user');
-        }
-      } else {
-        res.status(422).send({ error: 'User not found'});
-      }
-    } catch(err) {
-      next(err);
-    }
-  },
+  // update_user: async (req, res, next) => {
+  //   const header = req.headers.authorization.slice(4);
+  //   const decoded = jwt.decode(header, config.secret);
+  //   const props = req.body;
+  //   const { userId } = req.params;
+  //
+  //   try {
+  //     const user = await User.findById(userId);
+  //     if (user) {
+  //       if (user.adminId == decoded.sub) {
+  //         let updatedUser = await User.findByIdAndUpdate(userId, props, {new: true});
+  //         res.status(200).send(updatedUser);
+  //       } else {
+  //         res.status(403).send('You do not have administrative access to this user');
+  //       }
+  //     } else {
+  //       res.status(422).send({ error: 'User not found'});
+  //     }
+  //   } catch(err) {
+  //     next(err);
+  //   }
+  // },
 
 
   // PUT /user/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId

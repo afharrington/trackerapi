@@ -34,6 +34,7 @@ module.exports = function(app) {
   // Managing user accounts
   app.get('/admin/user', requireAdminAuth, admin.get_all_users);
   app.post('/admin/user', requireAdminAuth, admin.create_user);
+  app.get('/admin/user/recent', requireAdminAuth, admin.get_recent_activity);
   app.get('/admin/user/:userId', requireAdminAuth, admin.get_user);
   app.put('/admin/user/:userId', requireAdminAuth, admin.update_user);
   app.delete('/admin/user/:userId', requireAdminAuth, admin.delete_user);
@@ -45,7 +46,6 @@ module.exports = function(app) {
   app.put('/admin/regimen/:regimenId', requireAdminAuth, admin.update_regimen);
   app.delete('/admin/regimen/:regimenId', requireAdminAuth, admin.delete_regimen);
   app.get('/admin/regimen/:regimenId/users', requireAdminAuth, admin.get_user_regimens);
-
 
   // Managing tiles
   app.post('/admin/regimen/:regimenId', requireAdminAuth, admin.create_tile);
@@ -66,9 +66,8 @@ module.exports = function(app) {
 
   // Managing user account
   app.get('/user', requireUserAuth, user.get_user);
-  app.put('/', requireUserAuth, user.update_user);
+  app.put('/user', user.update_user);
 
-  app.post('/user/forgot', auth.forgot_password);
   // Accessing all user regimens
   // app.get('/user', requireUserAuth, user.get_regimens);
 

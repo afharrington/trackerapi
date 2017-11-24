@@ -32,15 +32,28 @@ module.exports = {
             path: 'activeUserRegimen',
             model: 'userRegimen'
           }
-          // ,
-          // populate: {
-          //   path: 'regimens',
-          //   model: 'regimen'
-          // }
         });
       let users = admin.users;
       res.status(200).send(users);
     } catch(err) {
+      next(err);
+    }
+  },
+
+  // Get recent entries from users managed by this admin
+  // GET /admin/user/recent
+  get_recent_activity: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+
+    try {
+      let admin = await Admin.findById(decoded.sub);
+      let recentActivity = admin.recentActivity;
+      recentActivity = recentActivity.sort((a, b) => a.activity - b.activity);
+
+      res.status(200).send(recentActivity);
+    } catch(err) {
+      console.log(err);
       next(err);
     }
   },
@@ -716,6 +729,10 @@ module.exports = {
     const { userId, regId, tileId } = req.params;
     const props = req.body;
 
+    if (props.entryDate == undefined) {
+      props.entryDate = new Date();
+    }
+
     const entry = {
       "activity": props.activity,
       "notes": props.notes,
@@ -780,6 +797,11 @@ module.exports = {
 
             thisEntryCycle.cycleEntries = [entry, ...thisEntryCycle.cycleEntries];
           }
+
+          entry.userName = `${user.firstName} ${user.lastName}`;
+          entry.userId = user._id;
+          entry.tileId = tile._id; // user tile id
+          entry.tileName = tile.userTileName;
 
           admin.recentActivity = [entry, ...admin.recentActivity];
           if (admin.recentActivity.length > 10) {
