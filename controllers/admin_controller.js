@@ -49,7 +49,11 @@ module.exports = {
     try {
       let admin = await Admin.findById(decoded.sub);
       let recentActivity = admin.recentActivity;
-      recentActivity = recentActivity.sort((a, b) => a.activity - b.activity);
+      // recentActivity = recentActivity.sort((a, b) => a.activity - b.activity);
+
+      recentActivity = recentActivity.sort(function(a, b){
+        return b.entryDate == a.entryDate ? 0 : +(b.entryDate > a.entryDate) || -1;
+      });
 
       res.status(200).send(recentActivity);
     } catch(err) {
@@ -324,7 +328,7 @@ module.exports = {
 // MANAGING REGIMENS =======================================================>>
 
   // Get all regimens associated with this admin
-  // GET /admin/regimen
+  // GET /admin/regimens
   get_all_regimens: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
@@ -804,9 +808,13 @@ module.exports = {
           entry.tileName = tile.userTileName;
 
           admin.recentActivity = [entry, ...admin.recentActivity];
-          if (admin.recentActivity.length > 10) {
+          if (admin.recentActivity.length > 100) {
             admin.recentActivity.pop();
           }
+
+          admin.recentActivity = admin.recentActivity.sort(function(a, b){
+            return b.entryDate == a.entryDate ? 0 : +(b.entryDate > a.entryDate) || -1;
+          });
 
           admin.save();
           await regimen.save();

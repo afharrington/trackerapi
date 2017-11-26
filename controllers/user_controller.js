@@ -151,6 +151,18 @@ module.exports = {
           thisEntryCycle.cycleEntries = [entry, ...thisEntryCycle.cycleEntries];
         }
 
+        let user = await User.findById(decoded.sub);
+        let admin = await Admin.findById(user.adminId);
+
+        admin.recentActivity = [entry, ...admin.recentActivity];
+        if (admin.recentActivity.length > 100) {
+          admin.recentActivity.pop();
+        }
+        admin.recentActivity = admin.recentActivity.sort(function(a, b){
+          return b.entryDate == a.entryDate ? 0 : +(b.entryDate > a.entryDate) || -1;
+        });
+
+        await admin.save();
         await regimen.save();
         res.status(200).send(tile);
       } else {

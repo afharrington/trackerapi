@@ -2,10 +2,9 @@ const passport = require('passport');
 const JwtStrategy = require('passport-jwt').Strategy;
 const ExtractJwt = require('passport-jwt').ExtractJwt;
 const LocalStrategy = require('passport-local');
-
+const config = require('../config/keys.js');
 const Admin = require('../models/Admin/admin_model');
 const User = require('../models/User/user_model');
-const config = require('../config/keys.js');
 
 const localOptions = { usernameField: 'email' };
 

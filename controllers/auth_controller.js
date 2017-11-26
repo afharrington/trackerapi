@@ -49,7 +49,7 @@ module.exports = {
           res.status(409).send('Email and registration code do not match.');
         } else {
           existingAdmin.password = adminProps.password;
-          existingAdmin.code = 'Gf4et4*h3(tn#ndigw3';
+        
           let updatedAdmin = await existingAdmin.save();
           const token = tokenForUser(updatedAdmin);
           res.status(200).send({ token: token, firstName: updatedAdmin.firstName, lastName: updatedAdmin.lastName });

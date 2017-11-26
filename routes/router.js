@@ -2,7 +2,7 @@ const auth = require('../controllers/auth_controller');
 const admin = require('../controllers/admin_controller');
 const user = require('../controllers/user_controller');
 const test = require('../controllers/test_controller');
-
+const config = require('../config/keys.js');
 const passportService = require("../services/passport");
 const passport = require("passport");
 
@@ -40,7 +40,7 @@ module.exports = function(app) {
   app.delete('/admin/user/:userId', requireAdminAuth, admin.delete_user);
 
   // Managing regimens
-  app.get('/admin/regimen', requireAdminAuth, admin.get_all_regimens);
+  app.get('/admin/regimens', requireAdminAuth, admin.get_all_regimens);
   app.post('/admin/regimen', requireAdminAuth, admin.create_regimen);
   app.get('/admin/regimen/:regimenId', requireAdminAuth, admin.get_regimen);
   app.put('/admin/regimen/:regimenId', requireAdminAuth, admin.update_regimen);
