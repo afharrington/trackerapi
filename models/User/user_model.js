@@ -17,6 +17,7 @@ const userSchema = new Schema({
   regimens: [{ type: Schema.Types.ObjectId, ref: 'regimen'}],
   userRegimens: [{ type: Schema.Types.ObjectId, ref: 'userRegimen'}],
   activeUserRegimen: { type: Schema.Types.ObjectId, ref: 'userRegimen'},
+  recentEntry: {},
   created_date: { type: Date, default: Date.now }
 },{
   toObject: {

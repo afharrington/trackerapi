@@ -86,7 +86,7 @@ module.exports = {
           adminId: decoded.sub
         });
 
-        // If at least one regimen was selected
+        // If a regimen was selected
         let regimenId = props.regimen;
         if (regimenId) {
           let userName = `${user.firstName} ${user.lastName}`;
@@ -136,10 +136,21 @@ module.exports = {
           user.userRegimens=[userRegimen];
           user.activeUserRegimen = userRegimen;
           let newUser = await user.save();
+
+          // Add this user to the list of users assigned this regimen
+          regimen.users.push(newUser);
+          regimen.save();
         }
 
         // Add new user to the admin's list and keep sorted alphabetically
-        let admin = await Admin.findById({ _id: decoded.sub }).populate('users');
+        let admin = await Admin.findById({ _id: decoded.sub })
+          .populate({
+            path: 'users',
+            populate: {
+              path: 'activeUserRegimen',
+              model: 'userRegimen'
+            }
+          });
         let updatedUsers = [user, ...admin.users];
         updatedUsers = _.sortBy(updatedUsers, o => o.firstName);
         await Admin.findByIdAndUpdate(decoded.sub, { users: updatedUsers });
@@ -195,6 +206,8 @@ module.exports = {
           user.code = props.code || user.code;
           let userName = `${user.firstName} ${user.lastName}`;
 
+          let currentRegimen = await Regimen.findById(props.regimen);
+
           // If the regimen selected does not match the current active regimen
           if (props.regimen != user.activeUserRegimen.fromRegimenId) {
 
@@ -209,7 +222,6 @@ module.exports = {
 
             // Otherwise create a new user regimen and set it to be the active
             } else {
-
               let regimen = await Regimen.findById(props.regimen);
 
               let userRegimenTiles = [];
@@ -252,6 +264,11 @@ module.exports = {
               user.userRegimens = [userRegimen,...user.userRegimens];
               user.activeUserRegimen = userRegimen;
               }
+
+              // Delete the user from the current regimen's list of users
+              currentRegimen.users = currentRegimen.users.filter(regimenUser => {
+                return regimenUser._id != decoded.sub;
+              });
             }
 
           let updatedUser = await user.save();
@@ -283,9 +300,16 @@ module.exports = {
           await User.findByIdAndRemove(userId);
           res.status(200).send(userId);
 
-          // Also delete the userRegimen associated with this user
+          // Delete the userRegimen associated with this user
           let userRegimen = await UserRegimen.findOne({ userId: userId});
           await UserRegimen.findByIdAndRemove(userRegimen._id);
+
+          let regimen = await Regimen.findOne({ id: user.activeUserRegimen.fromRegimenId });
+
+          // Delete the user from the regimen's list of users
+          regimen.users = regimen.users.filter(user => {
+            return user._id != decoded.sub;
+          });
 
         } else {
           res.status(403).send('You do not have administrative access to this user');
@@ -745,14 +769,14 @@ module.exports = {
     }
 
     try {
-      const user = await User.findById(userId);
+      const user = await User.findById(userId).populate('activeUserRegimen');
       if (user) {
         // Check if admin has administrative access to this user's account
         if (user.adminId == decoded.sub) {
 
           let admin = await Admin.findById(decoded.sub);
-          let regimen = await UserRegimen.findById(regId);
-          let tile = regimen.userTiles.find(tile => tile._id == tileId);
+          let userRegimen = await UserRegimen.findById(regId);
+          let tile = userRegimen.userTiles.find(tile => tile._id == tileId);
           let cycles = tile.cycles;
 
           // See if the new entry fits within an existing cycle
@@ -816,8 +840,17 @@ module.exports = {
             return b.entryDate == a.entryDate ? 0 : +(b.entryDate > a.entryDate) || -1;
           });
 
+          // Update the most recent entry for this user
+          user.recentEntry = entry;
+          user.save();
           admin.save();
-          await regimen.save();
+          userRegimen.save();
+
+          // Update the most recent entry for this regimen
+          let regimen = await Regimen.findById(user.activeUserRegimen.fromRegimenId);
+          regimen.recentEntry = entry;
+          regimen.save();
+
           res.status(200).send(tile);
 
         } else {

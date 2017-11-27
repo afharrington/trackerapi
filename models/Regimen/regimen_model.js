@@ -7,6 +7,11 @@ const regimenSchema = new Schema({
   adminId: String,
   tiles: [tileSchema],
   created_date: { type: Date, default: Date.now },
+  users: [{
+    type: Schema.Types.ObjectId,
+    ref: 'user'
+  }],
+  recentEntry: {}
 });
 
 regimenSchema.pre('remove', function(next) {
