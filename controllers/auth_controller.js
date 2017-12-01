@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
-const Admin = require('../models/Admin/admin_model');
-const User = require('../models/User/user_model');
+const Admin = require('../models/admin_model');
+const User = require('../models/user_model');
 const jwt = require('jwt-simple');
 const config = require('../config/keys.js');
 
@@ -24,12 +24,18 @@ module.exports = {
   // POST /admin
   create_admin: async (req, res, next) => {
     const adminProps = req.body;
+
     try {
       let existingAdmin = await Admin.findOne({ email: adminProps.email });
       if (!existingAdmin) {
         let newAdmin = await Admin.create(adminProps);
-        // const token = tokenForUser(newAdmin);
-        res.status(200).send({firstName: newAdmin.firstName, lastName: newAdmin.lastName, email: newAdmin.email });
+        const token = tokenForUser(newAdmin);
+
+        res.status(200).send({
+          firstName: newAdmin.firstName,
+          lastName: newAdmin.lastName,
+          email: newAdmin.email,
+          token: token });
       } else {
         res.status(409).send('This email is already registered for an admin account');
       }
@@ -49,7 +55,7 @@ module.exports = {
           res.status(409).send('Email and registration code do not match.');
         } else {
           existingAdmin.password = adminProps.password;
-        
+
           let updatedAdmin = await existingAdmin.save();
           const token = tokenForUser(updatedAdmin);
           res.status(200).send({ token: token, firstName: updatedAdmin.firstName, lastName: updatedAdmin.lastName });
@@ -62,14 +68,24 @@ module.exports = {
     }
   },
 
+
   // GET /admin
   get_admin: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
 
     try {
-      let admin = await Admin.findById({ _id: decoded.sub }).populate('regimens');
-      res.status(200).send(admin);
+      let admin = await Admin.findById({ _id: decoded.sub }).populate('programs');
+      let adminDetails = {
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+        email: admin.email,
+        created_date: admin.created_date,
+        programs: admin.programs,
+        users: admin.users,
+        recentEntries: admin.recentEntries
+      }
+      res.status(200).send(adminDetails);
     } catch(err) {
       next(err);
     }
@@ -110,7 +126,6 @@ module.exports = {
         } else {
           existingUser.password = userProps.password;
           existingUser.code = null;
-          // existingUser.code = 'r3&9S!!Btjd%3r*L';
           let updatedUser = await existingUser.save();
           const token = tokenForUser(updatedUser);
           res.status(200).send({ token: token, firstName: updatedUser.firstName, lastName: updatedUser.lastName });

@@ -11,10 +11,10 @@ before((done) => {
 });
 
 beforeEach((done) => {
-  const { admins, users, regimens, tiles, people } = mongoose.connection.collections;
+  const { admins, users, programs, tiles, people } = mongoose.connection.collections;
   admins.drop(() => {
     users.drop(() => {
-      regimens.drop(() => {
+      programs.drop(() => {
         tiles.drop(() => {
           people.drop(() => {
             done();

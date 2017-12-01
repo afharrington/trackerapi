@@ -1,16 +1,16 @@
 const assert = require('assert');
-const Regimen = require('../models/Regimen/regimen_model');
-const UserRegimen = require('../models/User/user_regimen_schema');
+const Program = require('../models/Program/program_model');
+const UserProgram = require('../models/User/user_program_schema');
 
-describe('Creating UserRegimen from assigned Regimen', () => {
+describe('Creating UserProgram from assigned Program', () => {
 
   beforeEach((done) => {
     jason = new User({ firsName: 'Jason' });
-    regimen = new Regimen({ regimenName: 'Fitness' });
+    program = new Program({ programName: 'Fitness' });
 
-    jason.regimens.push(regimen);
+    jason.programs.push(program);
 
-    Promise.all([jason.save(), regimen.save()])
+    Promise.all([jason.save(), program.save()])
       .then(() => done());
   })
 

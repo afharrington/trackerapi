@@ -5,26 +5,12 @@ const bcrypt = require('bcrypt-nodejs');
 const adminSchema = new Schema({
   firstName: { type: String, lowercase: true, required: [true, 'First name required'] },
   lastName: { type: String, lowercase: true },
-  code: { type: String, required: [true, 'Registration code required'] },
-  mobile: String,
+  code: { type: String },
   email: {
     required: [true, 'Email required'],
     type: String,
     lowercase: true },
   password: { type: String},
-  users: [{
-    type: Schema.Types.ObjectId,
-    ref: 'user'
-  }],
-  tiles: [{
-    type: Schema.Types.Object,
-    ref: 'tile'
-  }],
-  regimens: [{
-    type: Schema.Types.ObjectId,
-    ref: 'regimen'
-  }],
-  recentActivity: [],
   created_date: { type: Date, default: Date.now }
 });
 

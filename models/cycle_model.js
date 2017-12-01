@@ -1,17 +1,22 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-const entrySchema = require('./entry_schema');
 const moment = require('moment');
 
 const cycleSchema = new Schema({
+  adminId: String,
+  userId: String,
+  tileId: String,
+  // Decide if userTileId and userProgramId should be here, too
   cycleStartDate: { type: Date, default: Date.now },
-  cycleEndDate: { type: Date },
-  cycleNextDate: { type: Date },
-  cycleEntries: [entrySchema],
-  cycleTotalMinutes: Number,
-  cycleLengthInDays: Number,
-  cycleGoalInHours: Number,
-  color: { type: Number, default: 0 },
+  cycleEndDate: { type: Date }, // Automatically updated on save
+  cycleNextDate: { type: Date }, // Automatically updated on save
+  cycleTotalMinutes: Number, // Automatically updated on save
+  cycleLengthInDays: Number, // From tile settings
+  cycleGoalInHours: Number, // From tile settings
+  cycleEntries: [{
+    type: Schema.Types.ObjectId,
+    ref: 'entry'
+  }],
 },{
   toObject: {
     virtuals: true
@@ -21,43 +26,25 @@ const cycleSchema = new Schema({
   }
 });
 
-module.exports = cycleSchema;
+// Note that right now, if the tile settings or user settings change, old cycles will NOT be updated right now
 
-// Creates additional variables upon saving a new cycle
+// Creates additional calculated variables when saving a new cycle
 cycleSchema.pre('save', function(next) {
-
-  const NUM_SHADES = 10;
-  const shadesPerHour = Math.floor(NUM_SHADES / this.cycleGoalInHours);
-  let color;
-
-  // If there are entries, total the minutes, calculate the color based on settings
+  // If there are entries, total the minutes, and keep array of entries sorted by date
   if (this.cycleEntries.length !== 0) {
     let totalMinutes = this.cycleEntries.reduce(function(prev, curr) {
       return prev + curr['minutes'];
     }, 0);
     this.cycleTotalMinutes = totalMinutes;
-    let totalHours = totalMinutes / 60;
-    if (totalHours == 0) {
-      color = 0;
-    } else {
-      color = shadesPerHour * totalHours;
-    }
-    if (color > 9) {
-      this.color = 9;
-    } else {
-      this.color = color;
-    }
     this.cycleEntries = this.cycleEntries.sort(function(a,b){return b.entryDate - a.entryDate});
   }
-
   // Calculate the cycle's end date and the start date of the next cycle
   this.cycleEndDate = moment(this.cycleStartDate).add(this.cycleLengthInDays, 'days');
   this.cycleNextDate = moment(this.cycleStartDate).add((this.cycleLengthInDays + 1), 'days');
-
   next();
 });
 
-
+// Calculate % of cycle completed
 cycleSchema.virtual('cyclePercent').get(function() {
   let goalInMinutes = this.cycleGoalInHours * 60;
   let percent = Math.floor((this.cycleTotalMinutes / goalInMinutes) * 100);
@@ -66,10 +53,6 @@ cycleSchema.virtual('cyclePercent').get(function() {
   } else {
     return percent;
   }
-})
+});
 
-//
-// cycleSchema.virtual('cycleNextDate').get(function() {
-//   let nextDate = moment(this.cycleStartDate).add(this.cycleLengthInDays, 'days');
-//   return nextDate;
-// })
+module.exports = mongoose.model('cycle', cycleSchema);

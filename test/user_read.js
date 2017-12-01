@@ -1,13 +1,13 @@
 const assert = require('assert');
 const User = require('../models/User/user_model');
-const Regimen = require('../models/Regimen/regimen_model');
+const Program = require('../models/Program/program_model');
 
 describe('Reading users out of the database', () => {
   let joe, jason, jim, jordan, fitness;
 
   beforeEach((done) => {
-    fitness = new Regimen({
-      regimenName: 'strength & fitness',
+    fitness = new Program({
+      programName: 'strength & fitness',
       tiles: [{
         tileName: 'hypertrophy',
         mode: 'goal'
@@ -28,7 +28,7 @@ describe('Reading users out of the database', () => {
       password: 'password',
       mobile: '555-555-5555',
       sport: 'basketball',
-      regimens: [fitness]
+      programs: [fitness]
     });
 
 

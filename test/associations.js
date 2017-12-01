@@ -1,35 +1,35 @@
 const assert = require('assert');
 const Admin = require('../models/Admin/admin_model');
 const User = require('../models/User/user_model');
-const Regimen = require('../models/Regimen/regimen_model');
+const Program = require('../models/Program/program_model');
 
 describe('Associations', () => {
-  let jane, joe, regimen;
+  let jane, joe, program;
 
   beforeEach((done) => {
     jane = new Admin({ firstName: 'jane' , email: 'jane@gmail.com', password: 'password'});
     joe = new User ({ firstName: 'joe', email: 'joe@gmail.com', password: 'password' });
-    regimen = new Regimen ({ regimenName: 'strength & fitness' });
+    program = new Program ({ programName: 'strength & fitness' });
 
     // Add Joe to the collection of users Jane manages
     jane.users.push(joe);
     // Add Jane as the admin for Joe's account
     joe.admin = jane;
 
-    // Add regimen to Jane's list of regimens
-    jane.regimens.push(regimen);
-    // Add profile to Joe's list of assigned regimens
-    joe.regimens.push(regimen);
+    // Add program to Jane's list of programs
+    jane.programs.push(program);
+    // Add profile to Joe's list of assigned programs
+    joe.programs.push(program);
 
-    Promise.all([joe.save(), jane.save(), regimen.save()])
+    Promise.all([joe.save(), jane.save(), program.save()])
       .then(() => done());
   });
 
-  it('saves relation between an admin and regimen', (done) => {
+  it('saves relation between an admin and program', (done) => {
     Admin.findOne({ firstName: 'jane' })
-      .populate('regimens')
+      .populate('programs')
       .then((admin) => {
-        assert(admin.regimens[0].regimenName == 'strength & fitness');
+        assert(admin.programs[0].programName == 'strength & fitness');
         done();
       });
   });
@@ -52,11 +52,11 @@ describe('Associations', () => {
       });
   });
 
-  it('saves a relation between a user and regimen', (done) => {
+  it('saves a relation between a user and program', (done) => {
     User.findOne({ firstName: 'joe' })
-      .populate('regimens')
+      .populate('programs')
       .then((user) => {
-        assert(user.regimens[0].regimenName == 'strength & fitness');
+        assert(user.programs[0].programName == 'strength & fitness');
         done();
       });
   });
@@ -66,14 +66,14 @@ describe('Associations', () => {
       .populate({
         path: 'users',
         populate: {
-          path: 'regimens',
-          model: 'regimen',
+          path: 'programs',
+          model: 'program',
         }
       })
       .then((admin) => {
         assert(admin.firstName == 'jane');
         assert(admin.users[0].firstName == 'joe');
-        assert(admin.users[0].regimens[0].regimenName == 'strength & fitness');
+        assert(admin.users[0].programs[0].programName == 'strength & fitness');
         done();
       })
   });

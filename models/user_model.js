@@ -14,10 +14,10 @@ const userSchema = new Schema({
   password: { type: String },
   sport: { type: String, lowercase: true },
   adminId: String,
-  regimens: [{ type: Schema.Types.ObjectId, ref: 'regimen'}],
-  userRegimens: [{ type: Schema.Types.ObjectId, ref: 'userRegimen'}],
-  activeUserRegimen: { type: Schema.Types.ObjectId, ref: 'userRegimen'},
-  recentEntry: {},
+  activeUserProgram: {
+    type: Schema.Types.ObjectId,
+    ref: 'userProgram'
+  },
   created_date: { type: Date, default: Date.now }
 },{
   toObject: {
@@ -27,7 +27,6 @@ const userSchema = new Schema({
     virtuals: true
   }
 });
-
 
 userSchema.pre('save', function(next) {
   const user = this;
@@ -42,17 +41,17 @@ userSchema.pre('save', function(next) {
 });
 
 
-userSchema.pre('remove', function(next) {
-  const userToRemove = this;
-  const userAdmin = this.adminId;
-  const Admin = mongoose.model('admin');
-  Admin.findById({ _id: userAdmin })
-    .then((admin) => {
-      admin.users = admin.users.filter(user => user == userToRemove );
-      admin.save()
-      .then(() => next());
-    })
-  });
+// userSchema.pre('remove', function(next) {
+//   const userToRemove = this;
+//   const userAdmin = this.adminId;
+//   const Admin = mongoose.model('admin');
+//   Admin.findById({ _id: userAdmin })
+//     .then((admin) => {
+//       admin.users = admin.users.filter(user => user == userToRemove );
+//       admin.save()
+//       .then(() => next());
+//     })
+//   });
 
 userSchema.methods.comparePassword = function(candidatePassword, callback) {
   bcrypt.compare(candidatePassword, this.password, function(err, isMatch) {
@@ -61,8 +60,8 @@ userSchema.methods.comparePassword = function(candidatePassword, callback) {
   });
 }
 
-// userSchema.virtual('activeRegimenName').get(function() {
-//   return this.regimens[this.activeRegimen].regimenName;
+// userSchema.virtual('activeProgramName').get(function() {
+//   return this.programs[this.activeProgram].programName;
 // });
 
 module.exports = mongoose.model('user', userSchema);

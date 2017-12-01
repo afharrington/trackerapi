@@ -4,7 +4,7 @@ const request = require('supertest');
 
 const Admin = require('../models/Admin/admin_model.js');
 const User = require('../models/User/user_model.js');
-const Regimen = require('../models/Regimen/regimen_model.js');
+const Program = require('../models/Program/program_model.js');
 const Tile = require('../models/Tile/tile_model.js');
 const app = require('../app.js');
 
@@ -15,9 +15,9 @@ describe('Admin controller', () => {
 
   beforeEach((done) => {
     joe = new Admin({ firstName: 'joe', email: 'joe@gmail.com', password: 'password2' });
-    brain = new Regimen({ regimenName: 'brain'});
-    fitness = new Regimen({
-      regimenName: 'strength & fitness',
+    brain = new Program({ programName: 'brain'});
+    fitness = new Program({
+      programName: 'strength & fitness',
       tiles: [{
         tileName: 'hypertrophy',
         mode: 'goal'
@@ -36,18 +36,18 @@ describe('Admin controller', () => {
         password: 'password3',
         mobile: '555-555-5555',
         sport: 'volleyball',
-        regimens: [fitness],
-        userRegimens: [],
+        programs: [fitness],
+        userPrograms: [],
         admin: joe._id
       });
 
-      jane.regimens.forEach(regimen => {
-          let userRegimen = {
-            userRegimenName: regimen.regimenName,
+      jane.programs.forEach(program => {
+          let userProgram = {
+            userProgramName: program.programName,
             userTiles: []
           };
-          if(regimen.tiles) {
-            regimen.tiles.forEach(tile => {
+          if(program.tiles) {
+            program.tiles.forEach(tile => {
               let userTile = {
                 userTileName: tile.tileName,
                 mode: tile.mode,
@@ -56,9 +56,9 @@ describe('Admin controller', () => {
                 goalHours: tile.goalHours,
                 activityOptions: tile.activityOptions
               }
-              userRegimen.userTiles.push(userTile);
+              userProgram.userTiles.push(userTile);
             });
-            jane.userRegimens.push(userRegimen);
+            jane.userPrograms.push(userProgram);
           }
       });
 
@@ -103,7 +103,7 @@ describe('Admin controller', () => {
       firstName: 'alex',
       email: 'alex@gmail.com',
       password: 'password',
-      regimens: [fitness]
+      programs: [fitness]
     };
 
     request(app)
@@ -138,8 +138,8 @@ describe('Admin controller', () => {
       password: 'password3',
       mobile: '555-555-5555',
       sport: 'volleyball',
-      regimens: [fitness, brain],
-      userRegimens: [],
+      programs: [fitness, brain],
+      userPrograms: [],
       admin: joe._id
     }
 

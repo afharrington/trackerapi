@@ -1,14 +1,14 @@
 const assert = require('assert');
 const User = require('../models/User/user_model');
-const Regimen = require('../models/Regimen/regimen_model');
+const Program = require('../models/Program/program_model');
 const Tile = require('../models/Tile/tile_model');
 
 describe('Creating a user', () => {
   let fitness;
 
   beforeEach((done) => {
-    fitness = new Regimen({
-      regimenName: 'strength & fitness',
+    fitness = new Program({
+      programName: 'strength & fitness',
       tiles: [{
         tileName: 'hypertrophy',
         mode: 'goal'
@@ -18,7 +18,7 @@ describe('Creating a user', () => {
       }]
     });
 
-    brainHealth = new Regimen({ regimenName: 'brain health' });
+    brainHealth = new Program({ programName: 'brain health' });
 
     Promise.all([fitness.save(), brainHealth.save()])
       .then(() => done());
@@ -34,17 +34,17 @@ describe('Creating a user', () => {
       password: 'password',
       mobile: '555-555-5555',
       sport: 'basketball',
-      regimens: [fitness],
-      userRegimens: []
+      programs: [fitness],
+      userPrograms: []
     });
 
-    joe.regimens.forEach(regimen => {
-        let userRegimen = {
-          userRegimenName: regimen.regimenName,
+    joe.programs.forEach(program => {
+        let userProgram = {
+          userProgramName: program.programName,
           userTiles: []
         };
-        if(regimen.tiles) {
-          regimen.tiles.forEach(tile => {
+        if(program.tiles) {
+          program.tiles.forEach(tile => {
             let userTile = {
               userTileName: tile.tileName,
               mode: tile.mode,
@@ -53,9 +53,9 @@ describe('Creating a user', () => {
               goalHours: tile.goalHours,
               activityOptions: tile.activityOptions
             }
-            userRegimen.userTiles.push(userTile);
+            userProgram.userTiles.push(userTile);
           });
-          joe.userRegimens.push(userRegimen);
+          joe.userPrograms.push(userProgram);
         }
     });
 

@@ -6,61 +6,54 @@ const ExtractJwt = require('passport-jwt').ExtractJwt;
 const _ = require('lodash');
 
 // Mongoose models and schemas
-const Admin = require('../models/Admin/admin_model');
-const User = require('../models/User/user_model');
-const Regimen = require('../models/Regimen/regimen_model');
-const UserRegimen = require('../models/UserRegimen/user_regimen_model');
-const UserTile = require('../models/UserRegimen/user_tile_schema');
-
+const Admin = require('../models/admin_model');
+const User = require('../models/user_model');
+const Program = require('../models/program_model');
+const Tile = require('../models/tile_model');
+const UserProgram = require('../models/user_program_model');
+const UserTile = require('../models/user_tile_model');
+const Cycle = require('../models/cycle_model');
+const Entry = require('../models/entry_model');
 
 // MANAGING USER ACCOUNTS ==================================================>>
 
 module.exports = {
 
-  // Get all users managed by this admin
-  // GET /admin/user
-  get_all_users: async (req, res, next) => {
+  // Get recent entries from users managed by this admin
+  // GET /admin/recent
+  get_recent_entries: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
 
     try {
-      let admin = await Admin.findById(decoded.sub)
-        // Populate users and then the userRegimens associated with them
-        .populate({
-          path: 'users',
-          populate: {
-            path: 'activeUserRegimen',
-            model: 'userRegimen'
-          }
-        });
-      let users = admin.users;
+      // let admin = await Admin.findById(decoded.sub);
+      let recentEntries = Entry.find({ adminId: decoded.dub }).sort({ field: entryDate }).limit(100);
+
+      // recentEntries = recentEntries.sort(function(a, b){
+      //   return b.entryDate == a.entryDate ? 0 : +(b.entryDate > a.entryDate) || -1;
+      // });
+
+      res.status(200).send(recentEntries);
+    } catch(err) {
+      console.log(err);
+      next(err);
+    }
+  },
+
+  // Get all users managed by this admin
+  // GET /admin/user
+  get_users: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+
+    try {
+      let users = await User.find({ adminId: decoded.sub }).populate('activeUserProgram');
       res.status(200).send(users);
     } catch(err) {
       next(err);
     }
   },
 
-  // Get recent entries from users managed by this admin
-  // GET /admin/user/recent
-  get_recent_activity: async (req, res, next) => {
-    const header = req.headers.authorization.slice(4);
-    const decoded = jwt.decode(header, config.secret);
-
-    try {
-      let admin = await Admin.findById(decoded.sub);
-      let recentActivity = admin.recentActivity;
-      // recentActivity = recentActivity.sort((a, b) => a.activity - b.activity);
-
-      recentActivity = recentActivity.sort(function(a, b){
-        return b.entryDate == a.entryDate ? 0 : +(b.entryDate > a.entryDate) || -1;
-      });
-
-      res.status(200).send(recentActivity);
-    } catch(err) {
-      console.log(err);
-      next(err);
-    }
-  },
 
   // Create a new user from admin dashboard - this assigns a registration code
   // but does not register the user with a password (that must be done by the user)
@@ -75,102 +68,83 @@ module.exports = {
       if (existingUser) {
         res.send('This email is already registered for a user account');
       } else {
-
-        // Create a new user
+        // Create a new user (without password)
         let user = await User.create({
+          adminId: decoded.sub,
           firstName: props.firstName,
           lastName: props.lastName,
-          code: props.code,
           email: props.email,
+          code: props.code,
           sport: props.sport,
-          adminId: decoded.sub
         });
 
-        // If a regimen was selected
-        let regimenId = props.regimen;
-        if (regimenId) {
-          let userName = `${user.firstName} ${user.lastName}`;
-          let regimen = await Regimen.findById(regimenId);
+        let userName = `${user.firstName} ${user.lastName}`;
+        let tiles = await Tile.find({ programId: props.program });
 
-          user.regimens = [regimen];
-          user.userRegimens = [];
+        // Create userTiles to go in userProgram
+        let program = await Program.findById(props.program);
 
-          // Generate user regimen tiles
-          let userRegimenTiles = [];
-          if (regimen.tiles) {
-            regimen.tiles.forEach((tile) => {
+        // Create a new user program
+        let userProgram = await UserProgram.create({
+          adminId: decoded.sub,
+          userId: user._id,
+          userName: userName,
+          programId: props.program,
+          userProgramName: program.programName,
+        });
 
-              // Start a new cycle for the user regimen
-              let newCycle = {
-                cycleStartDate: new Date(),
-                cycleLengthInDays: tile.goalCycle,
-                cycleGoalInHours: tile.goalHours,
-                cycleTotalMinutes: 0,
-                color: 0
-              }
+        if (tiles) {
+          for (let tile of tiles) {
 
-              let userTile = {
-                userName: userName,
-                userId: user._id,
-                fromTile: tile,
-                userTileName: tile.tileName,
-                goalCycle: tile.goalCycle,
-                goalHours: tile.goalHours,
-                activityOptions: tile.activityOptions,
-                cycles: [newCycle]
-              }
-              userRegimenTiles.push(userTile);
+            // Create a new userTile that matches the programTile
+            let cycle = await Cycle.create({
+              adminId: decoded.sub,
+              userId: user._id,
+              userName: userName,
+              tileId: tile._id,
+              cycleStartDate: new Date(),
+              cycleLengthInDays: tile.goalCycle,
+              cycleGoalInHours: tile.goalHours,
+              cycleTotalMinutes: 0
             });
+
+            let userTile = new UserTile({
+              adminId: decoded.sub,
+              userId: user._id,
+              userName: userName,
+              programId: program._id,
+              tileId: tile._id,
+              userProgramId: userProgram._id,
+              userTileName: tile.tileName,
+              goalHours: tile.goalHours,
+              goalCycle: tile.goalCycle,
+              activityOptions: tile.activityOptions,
+              currentCycleStart: new Date(),
+              cycles: [cycle]
+            });
+            userTile.save();
+
           }
-
-          // Create the new user regimen
-          let userRegimen = await UserRegimen.create({
-            userId: user._id,
-            userName: userName,
-            fromRegimen: regimen,
-            fromRegimenId: regimen._id,
-            userRegimenName: regimen.regimenName,
-            userTiles: userRegimenTiles,
-          });
-
-          user.userRegimens=[userRegimen];
-          user.activeUserRegimen = userRegimen;
-          let newUser = await user.save();
-
-          // Add this user to the list of users assigned this regimen
-          regimen.users.push(newUser);
-          regimen.save();
         }
 
-        // Add new user to the admin's list and keep sorted alphabetically
-        let admin = await Admin.findById({ _id: decoded.sub })
-          .populate({
-            path: 'users',
-            populate: {
-              path: 'activeUserRegimen',
-              model: 'userRegimen'
-            }
-          });
-        let updatedUsers = [user, ...admin.users];
-        updatedUsers = _.sortBy(updatedUsers, o => o.firstName);
-        await Admin.findByIdAndUpdate(decoded.sub, { users: updatedUsers });
-        res.status(200).send(updatedUsers);
-      }
-    } catch(err) {
-      console.log(err);
-      next(err);
+        user.activeUserProgram = userProgram;
+        await user.save();
+        res.status(200).send(user);
+        }
+      } catch(err) {
+        console.log(err);
+        next(err);
     }
   },
 
-  // Get a specific user
   // GET /admin/user/:userId
   get_user: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
+    const { userId } = req.params;
 
     try {
-      let user = await User.findById({ _id: req.params.userId }).populate('activeUserRegimen').populate('regimens').populate('userRegimens');
-
+      let user = await User.findById(userId).populate('activeUserProgram');
       if (user) {
         if (user.adminId === decoded.sub) {
           res.status(200).send(user);
@@ -185,8 +159,6 @@ module.exports = {
     }
   },
 
-
-  // Edit a specific user's details
   // PUT /admin/user/:userId
   update_user: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -195,84 +167,85 @@ module.exports = {
     const { userId } = req.params;
 
     try {
-      const user = await User.findById(userId).populate('userRegimens');
+      const user = await User.findById(userId).populate('activeUserProgram');
+
       if (user) {
         if (user.adminId == decoded.sub) {
+
           user.adminId = user.adminId;
           user.firstName = props.firstName || user.firstName;
           user.lastName = props.lastName || user.lastName;
           user.email = props.email || user.email;
           user.sport = props.sport ||  user.sport;
           user.code = props.code || user.code;
-          let userName = `${user.firstName} ${user.lastName}`;
 
-          let currentRegimen = await Regimen.findById(props.regimen);
+          // If the program selected does not match the current active program
+          if (props.program != user.activeUserProgram.programId) {
 
-          // If the regimen selected does not match the current active regimen
-          if (props.regimen != user.activeUserRegimen.fromRegimenId) {
+            // Look for an existing program that matches the id in the request
+            let existingUserProgram = UserProgram.findOne({ userId: user._id, programId: props.program });
 
-            // Look for an existing regimen that matches
-            let newActiveUserRegimen = user.userRegimens.find((userRegimen) => {
-              return userRegimen.fromRegimenId == props.regimen;
-            });
+            // If the program exists, set it to be the active one
+            if (existingUserProgram) {
+              user.activeUserProgram = existingUserProgram;
 
-            // If the regimen exists, set it to be the activeRegimen
-            if (newActiveUserRegimen) {
-              user.activeUserRegimen = newActiveUserRegimen;
-
-            // Otherwise create a new user regimen and set it to be the active
+            // Else create a new user program and set it as active
             } else {
-              let regimen = await Regimen.findById(props.regimen);
 
-              let userRegimenTiles = [];
-              if (regimen.tiles) {
-                regimen.tiles.forEach(tile => {
+              // Create userTiles to go in userProgram
+              let program = await Program.findById(props.program);
+              let tiles = await Tile.find({ programId: program._id });
 
-                let newCycle = {
-                  cycleStartDate: new Date(),
-                  cycleLengthInDays: tile.goalCycle,
-                  cycleGoalInHours: tile.goalHours,
-                  cycleTotalMinutes: 0,
-                  color: 0
-                }
-
-                let userTile = {
-                  userName: userName,
-                  userId: user._id,
-                  fromTile: tile,
-                  userTileName: tile.tileName,
-                  goalCycle: tile.goalCycle,
-                  goalHours: tile.goalHours,
-                  activityOptions: tile.activityOptions,
-                  cycles: [newCycle]
-                }
-                userRegimenTiles.push(userTile);
-              });
-              }
-
-              // Create a user regimen
-              let userRegimen = await UserRegimen.create({
+              // Create a new user program
+              let userProgram = await UserProgram.create({
+                adminId: decoded.sub,
                 userId: user._id,
                 userName: userName,
-                fromRegimen: regimen,
-                fromRegimenId: regimen._id,
-                userRegimenName: regimen.regimenName,
-                userTiles: userRegimenTiles,
+                programId: props.program,
+                userProgramName: program.programName,
               });
 
-              user.regimens = [regimen, ...user.regimens];
-              user.userRegimens = [userRegimen,...user.userRegimens];
-              user.activeUserRegimen = userRegimen;
+              if (tiles) {
+                for (let tile of tiles) {
+
+                  // Create a new userTile that matches the programTile
+                  let cycle = await Cycle.create({
+                    adminId: decoded.sub,
+                    userId: user._id,
+                    userName: userName,
+                    tileId: tile._id,
+                    cycleStartDate: new Date(),
+                    cycleLengthInDays: tile.goalCycle,
+                    cycleGoalInHours: tile.goalHours,
+                    cycleTotalMinutes: 0
+                  });
+
+                  let userTile = new UserTile({
+                    adminId: decoded.sub,
+                    userId: user._id,
+                    userName: userName,
+                    programId: program._id,
+                    tileId: tile._id,
+                    userProgramId: userProgram._id,
+                    userTileName: tile.tileName,
+                    goalHours: tile.goalHours,
+                    goalCycle: tile.goalCycle,
+                    activityOptions: tile.activityOptions,
+                    currentCycleStart: new Date(),
+                    cycles: [cycle]
+                  });
+                  userTile.save();
+
+                }
               }
 
-              // Delete the user from the current regimen's list of users
-              currentRegimen.users = currentRegimen.users.filter(regimenUser => {
-                return regimenUser._id != decoded.sub;
-              });
+              user.activeUserProgram = userProgram;
             }
 
-          let updatedUser = await user.save();
-          res.status(200).send(updatedUser);
+            let updatedUser = await user.save();
+            res.status(200).send(updatedUser);
+          }
+
         } else {
           res.status(403).send('You do not have administrative access to this user');
         }
@@ -284,7 +257,7 @@ module.exports = {
     }
   },
 
-  // Delete a specific user
+
   // DELETE /admin/user/:userId
   delete_user: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -293,50 +266,20 @@ module.exports = {
     const { userId } = req.params;
 
     try {
-      const user = await User.findById(userId);
+      const user = await User.findById(userId).populate('activeUserProgram');
 
       if (user) {
         if (user.adminId == decoded.sub) {
+
+          await UserProgram.deleteMany({ userId: userId });
+          await UserTile.deleteMany({ userId: userId });
+          await Cycle.deleteMany({ userId: userId });
+          await Entry.deleteMany({ userId: userId });
+
+          // Delete user
           await User.findByIdAndRemove(userId);
+
           res.status(200).send(userId);
-
-          // Delete the userRegimen associated with this user
-          let userRegimen = await UserRegimen.findOne({ userId: userId});
-          await UserRegimen.findByIdAndRemove(userRegimen._id);
-
-          let regimen = await Regimen.findOne({ id: user.activeUserRegimen.fromRegimenId });
-
-          // Delete the user from the regimen's list of users
-          regimen.users = regimen.users.filter(user => {
-            return user._id != decoded.sub;
-          });
-
-        } else {
-          res.status(403).send('You do not have administrative access to this user');
-        }
-      } else {
-        res.status(422).send({ error: 'User not found'});
-      }
-    } catch(err) {
-      next(err);
-    }
-  },
-
-  // Get a user regimen
-  // GET /admin/user/:userId/reg/:regId
-  get_user_regimen: async (req, res, next) => {
-    const header = req.headers.authorization.slice(4);
-    const decoded = jwt.decode(header, config.secret);
-
-    try {
-      let user = await User.findById({ _id: req.params.userId }).populate('userRegimens');
-
-      if (user) {
-        if (user.adminId === decoded.sub) {
-          let userRegimen = user.userRegimens.find(userRegimen => {
-            return userRegimen._id == req.params.regId;
-          })
-          res.status(200).send(userRegimen);
         } else {
           res.status(403).send('You do not have administrative access to this user');
         }
@@ -349,398 +292,236 @@ module.exports = {
   },
 
 
-// MANAGING REGIMENS =======================================================>>
+// MANAGING PROGRAMS =======================================================>>
 
-  // Get all regimens associated with this admin
-  // GET /admin/regimens
-  get_all_regimens: async (req, res, next) => {
+  // Get all programs associated with this admin
+  // GET /admin/programs
+  get_programs: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
 
     try {
-      let admin = await Admin.findById({ _id: decoded.sub }).populate('regimens');
-      let regimens = admin.regimens;
-      res.status(200).send(regimens);
+      let programs = await Program.find({ adminId: decoded.sub }).populate('tiles');
+      res.status(200).send(programs);
     } catch(err) {
       next(err);
     }
   },
 
-  // Create a new regimen, to be used as a template for userRegimens
-  // POST /admin/regimen
-  create_regimen: async (req, res, next) => {
+  // POST /admin/program
+  create_program: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
     const props = req.body;
     props.adminId = decoded.sub;
 
     try {
-      let regimen = await Regimen.create(props);
-      let admin = await Admin.findByIdAndUpdate({ _id: decoded.sub }).populate('regimens');
-
-      // Add new regimen to list and sort alphabetically
-      updatedRegimens = [regimen, ...admin.regimens];
-      updatedRegimens = _.sortBy(updatedRegimens, o => o.regimenName);
-
-      await Admin.findByIdAndUpdate(decoded.sub, { regimens: updatedRegimens });
-
-      res.status(200).send(updatedRegimens);
+      let program = await Program.create(props);
+      res.status(200).send(program);
     } catch(err) {
       next(err);
     }
   },
 
-  // Get a specific regimen
-  // GET /admin/regimen/:regimenId
-  get_regimen: async (req, res, next) => {
+  // Get a specific program
+  // GET /admin/program/:programId
+  get_program: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
+    const { programId } = req.params;
 
     try {
-      let regimen = await Regimen.findById({ _id: req.params.regimenId });
-      if (regimen) {
-        if (regimen.adminId === decoded.sub) {
-          res.status(200).send(regimen);
+      let program = await Program.findById(programId);
+      if (program) {
+        if (program.adminId === decoded.sub) {
+          res.status(200).send(program);
         } else {
-          res.status(403).send('You do not have administrative access to this regimen');
+          res.status(403).send('You do not have administrative access to this program');
         }
       } else {
-        res.status(422).send({ error: 'Regimen not found'});
+        res.status(422).send({ error: 'Program not found'});
       }
     } catch(err) {
       next(err);
     }
   },
 
-  // Update regimen (used in the app to update the regimen's name)
-  // PUT /admin/regimen/:regimenId
-  update_regimen: async (req, res, next) => {
+  // Update program (used in the app to update the program's name)
+  // PUT /admin/program/:programId
+  update_program: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
-    const { regimenId } = req.params;
+    const { programId } = req.params;
     const props = req.body;
 
     try {
-      const regimen = await Regimen.findById(regimenId);
-      if (regimen) {
-        if (regimen.adminId == decoded.sub) {
-          let updatedRegimen = await Regimen.findByIdAndUpdate(regimenId, props, {new: true});
+      const program = await Program.findById(programId);
+      if (program) {
+        if (program.adminId == decoded.sub) {
+          let updatedProgram = await Program.findByIdAndUpdate(programId, props, {new: true});
 
-          // Also updates user regimens that are based on this regimen
-          let userRegimens = await UserRegimen.find({ fromRegimen: regimenId});
-          userRegimens.forEach( userRegimen => {
-            userRegimen.userRegimenName = props.regimenName;
-            userRegimen.save();
+          // Also updates user programs that are based on this program
+          let userPrograms = await UserProgram.find({ programId: programId});
+          userPrograms.forEach(userProgram => {
+            userProgram.userProgramName = props.programName;
+            userProgram.save();
           })
-          res.status(200).send(updatedRegimen);
+          res.status(200).send(updatedProgram);
         } else {
-          res.status(403).send('You do not have administrative access to this regimen');
+          res.status(403).send('You do not have administrative access to this program');
         }
       } else {
-        res.status(422).send({ error: 'Regimen not found'});
+        res.status(422).send({ error: 'Program not found'});
       }
     } catch(err) {
       next(err);
     }
   },
 
-  // TO DO: Decide whether or not this should delete the user regimens too
-  // DELETE /admin/regimen/:regimenId
-  delete_regimen: async (req, res, next) => {
+  // DELETE /admin/program/:programId
+  delete_program: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
-    const { regimenId } = req.params;
+    const { programId } = req.params;
     const props = req.body;
 
     try {
-      const regimen = await Regimen.findById(regimenId);
-      if (regimen) {
-        if (regimen.adminId == decoded.sub) {
-          await Regimen.findByIdAndRemove(regimenId)
-          res.status(200).send(regimenId);
+      const program = await Program.findById(programId);
+      if (program) {
+        if (program.adminId == decoded.sub) {
+          await Program.findByIdAndRemove(programId);
+          await UserProgram.deleteMany({ programId: programId });
+          await UserTile.deleteMany({ programId: programId });
+          await Cycle.deleteMany({ programId: programId });
+          await Entry.deleteMany({ programId: programId });ß
+          res.status(200).send(programId);
         } else {
-          res.status(403).send('You do not have administrative access to this regimen');
+          res.status(403).send('You do not have administrative access to this program');
         }
       } else {
-        res.status(422).send({ error: 'Regimen not found'});
+        res.status(422).send({ error: 'Program not found'});
       }
     } catch(err) {
       next(err);
     }
   },
 
-  // Get all of the userRegimens that were created with this regimen
-  // GET /admin/regimen/:regimenId/users
-  get_user_regimens: async (req, res, next) => {
-    const header = req.headers.authorization.slice(4);
-    const decoded = jwt.decode(header, config.secret);
-    const { regimenId } = req.params;
-    const props = req.body;
-
-    try {
-      let regimen = await Regimen.findById({ _id: req.params.regimenId });
-      if (regimen) {
-        if (regimen.adminId == decoded.sub) {
-          const userRegimens = await UserRegimen.find({ fromRegimen: regimenId});
-          res.status(200).send(userRegimens);
-        } else {
-          res.status(403).send('You do not have administrative access to this regimen');
-        }
-      } else {
-        res.status(422).send({ error: 'Regimen not found'});
-      }
-    } catch(err) {
-      next(err);
-    }
-  },
 
 // MANAGING TILES ===========================================================>>
 
-  // Add a tile (template) to an existing regimen
-  // POST /admin/regimen/:regimenId
+  // POST /admin/program/:programId
   create_tile: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
-    const { regimenId } = req.params;
-    const tile = req.body;
+    const { programId } = req.params;
+    const props = req.body;
+    props.programId = programId;
+    props.adminId = decoded.sub;
 
     try {
-      const regimen = await Regimen.findById(regimenId);
+      const program = await Program.findById(programId).populate('tiles');
 
-      if (regimen) {
-        if (regimen.adminId == decoded.sub) {
-          regimen.tiles = [tile, ...regimen.tiles];
-          let updatedRegimen = await regimen.save();
+      if (program) {
+        if (program.adminId == decoded.sub) {
 
-          let newTile = updatedRegimen.tiles[0];
+          let tile = await Tile.create(props);
 
-          // If there are existing userRegimens based on this regimen, add a
-          // matching userTile to each
-          let userRegimens = await UserRegimen.find({ fromRegimenId: regimenId});
-          if (userRegimens) {
-            userRegimens.forEach( userRegimen => {
+          // Add a new userTile to any userPrograms matching this program
+          let userPrograms = await UserProgram.find({ programId: program._id });
 
-              let newCycle = {
+          if (userPrograms) {
+            for (let userProgram of userPrograms) {
+
+              let userName = userProgram.userName;
+
+              let cycle = await Cycle.create({
+                adminId: decoded.sub,
+                userId: user._id,
+                userName: userName,
+                tileId: tile._id,
                 cycleStartDate: new Date(),
-                cycleLengthInDays: newTile.goalCycle,
-                cycleGoalInHours: newTile.goalHours,
-                cycleTotalMinutes: 0,
-                color: 0
-              }
-
-              let newUserTile = {
-                userName: userRegimen.userName,
-                fromTile: newTile,
-                userTileName: newTile.tileName,
-                activityOptions: newTile.activityOptions,
-                goalCycle: newTile.goalCycle,
-                goalHours: newTile.goalHours,
-                cycles: [newCycle]
-              }
-
-              userRegimen.userTiles = [newUserTile, ...userRegimen.userTiles];
-              userRegimen.save();
-            });
-          }
-
-          res.status(200).send(updatedRegimen);
-        } else {
-          res.status(403).send('You do not have administrative access to this regimen');
-        }
-      } else {
-        res.status(422).send({ error: 'Regimen not found'});
-      }
-    } catch(err) {
-      next(err);
-    }
-  },
-
-  // POST /admin/regimen/:regimenId/tile/:tileId
-  add_activity: async (req, res, next) => {
-    const header = req.headers.authorization.slice(4);
-    const decoded = jwt.decode(header, config.secret);
-    const activity = req.body.activity;
-
-    try {
-      const regimen = await Regimen.findById(req.params.regimenId);
-
-      if (regimen) {
-        if (regimen.adminId == decoded.sub) {
-          regimen.tiles.forEach( (tile, i) => {
-            if (tile._id == req.params.tileId) {
-              regimen.tiles[i].activityOptions = [...regimen.tiles[i].activityOptions, activity];
-            }
-          });
-          let updatedRegimen = await regimen.save();
-          res.status(200).send(updatedRegimen);
-        } else {
-          res.status(403).send('You do not have administrative access to this regimen');
-        }
-      }
-    } catch(err) {
-      next(err);
-    }
-  },
-
-  // PUT /admin/regimen/:regimenId/tile/:tileId
-  update_tile: async (req, res, next) => {
-    const header = req.headers.authorization.slice(4);
-    const decoded = jwt.decode(header, config.secret);
-    const { regimenId, tileId } = req.params;
-    const { tileName, mode, activityOptions, goalHours, goalCycle} = req.body;
-
-    try {
-      const regimen = await Regimen.findById(regimenId);
-
-
-      if (regimen) {
-
-        // Update regimen tile
-        if (regimen.adminId == decoded.sub) {
-
-          regimen.tiles.forEach((tile, i) => {
-            if (tile._id == tileId) {
-              tile.tileName = tileName;
-              tile.activityOptions = activityOptions;
-              tile.goalHours = goalHours;
-              tile.goalCycle = goalCycle;
-          }
-          });
-
-          let updatedRegimen = await regimen.save({new: true});
-
-          // // If there are existing userRegimens based on this regimen
-          let userRegimens = await UserRegimen.find({ fromRegimen: regimenId});
-
-          if (userRegimens) {
-           // Repeat for each userRegimen based on this regimen
-           userRegimens.forEach(userRegimen => {
-
-              let tileIndex = userRegimen.userTiles.findIndex(userTile => {
-                return userTile.fromTile == tileId;
+                cycleLengthInDays: tile.goalCycle,
+                cycleGoalInHours: tile.goalHours,
+                cycleTotalMinutes: 0
               });
 
-              userRegimen.userTiles[tileIndex].userTileName = tileName;
-              userRegimen.userTiles[tileIndex].activityOptions = activityOptions;
-              userRegimen.userTiles[tileIndex].goalHours = goalHours;
-              userRegimen.userTiles[tileIndex].goalCycle = goalCycle;
+              let userTile = new UserTile({
+                adminId: decoded.sub,
+                userId: user._id,
+                userName: userName,
+                programId: program._id,
+                tileId: tile._id,
+                userProgramId: userProgram._id,
+                userTileName: tile.tileName,
+                goalHours: tile.goalHours,
+                goalCycle: tile.goalCycle,
+                activityOptions: tile.activityOptions,
+                currentCycleStart: new Date(),
+                cycles: [cycle]
+              });
 
-              userRegimen.save();
-
-            });
+              userTile.save();
+            }
           }
-
-          res.status(200).send(updatedRegimen);
-
-        } else {
-          res.status(403).send('You do not have administrative access to this regimen');
-        }
-      } else {
-        res.status(422).send({ error: 'Regimen not found'});
-      }
-    } catch(err) {
-      next(err);
-    }
-  },
-
-  // DELETE /admin/regimen/:regimenId/tile/:tileId
-  delete_tile: async (req, res, next) => {
-    const header = req.headers.authorization.slice(4);
-    const decoded = jwt.decode(header, config.secret);
-    const { regimenId, tileId } = req.params;
-
-    try {
-      const regimen = await Regimen.findById(regimenId);
-
-      if (regimen) {
-        if (regimen.adminId == decoded.sub) {
-          regimen.tiles = regimen.tiles.filter(tile => tile._id != tileId);
-          let updatedRegimen = await regimen.save();
-
-          // If there are user regimens based on this regimen, remove the matching
-          // userTile from each userRegimen
-
-          // TO DO: Alert admin and user that this will delete records
-
-          let userRegimens = await UserRegimen.find({ fromRegimen: regimenId});
-
-          if (userRegimens) {
-            userRegimens.forEach(userRegimen => {
-              userRegimen.userTiles = userRegimen.userTiles.filter(userTile => userTile.fromTile != tileId);
-              userRegimen.save();
-            });
-          }
-
-          res.status(200).send(updatedRegimen);
-        } else {
-          res.status(403).send('You do not have administrative access to this regimen');
-        }
-      } else {
-        res.status(422).send({ error: 'Regimen not found'});
-      }
-    } catch(err) {
-      next(err);
-    }
-  },
-
-
-  // Gets all user tiles corresponding with a single tile "template"
-  // GET /admin/regimen/:regimenId/tile/:tileId/users
-  get_user_tiles: async (req, res, next) => {
-    const header = req.headers.authorization.slice(4);
-    const decoded = jwt.decode(header, config.secret);
-    const { regimenId, tileId } = req.params;
-    const props = req.body;
-
-    try {
-      let regimen = await Regimen.findById({ _id: req.params.regimenId });
-      if (regimen) {
-        if (regimen.adminId == decoded.sub) {
-          let userRegimens = await UserRegimen.find({ fromRegimen: regimenId});
-
-          let tiles = userRegimens.map(userRegimen => {
-            return userRegimen.userTiles.find(userTile => {
-              return userTile.fromTile.toString() == tileId;
-            });
-          });
-          res.status(200).send(tiles);
-        } else {
-          res.status(403).send('You do not have administrative access to this regimen');
-        }
-      } else {
-        res.status(422).send({ error: 'Regimen not found'});
-      }
-    } catch(err) {
-      next(err);
-    }
-  },
-
-
-
-// MANAGING SPECIFIC USER TILES AND REGIMENS =================================================>>
-
-  // Get a specific userTile with cycle data
-  // GET /admin/user/:userId/reg/:regId/usertile/:userTileId
-  get_user_tile: async (req, res, next) => {
-    const header = req.headers.authorization.slice(4);
-    const decoded = jwt.decode(header, config.secret);
-    const props = req.body;
-    const { userId, regId, userTileId } = req.params;
-    try {
-      const user = await User.findById(userId).populate('userRegimens');
-      if (user) {
-        if (user.adminId == decoded.sub) {
-          let userRegimen = user.userRegimens.find(userRegimen => {
-            return userRegimen._id == regId;
-          });
-
-          let tile = userRegimen.userTiles.find(userTile => {
-            return userTile._id == userTileId;
-          });
 
           res.status(200).send(tile);
         } else {
-          res.status(403).send('You do not have administrative access to this user');
+          res.status(403).send('You do not have administrative access to this program');
+        }
+      } else {
+        res.status(422).send({ error: 'Program not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+  // PUT /admin/tile/:tileId
+  update_tile: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { tileId } = req.params;
+    const { tileName, activityOptions, goalHours, goalCycle } = req.body;
+
+    try {
+      const tile = await Tile.findById(tileId);
+
+      if (tile) {
+        if (tile.adminId == decoded.sub) {
+          tile.tileName = tileName || tile.tileName;
+          tile.activityOptions = activityOptions || tile.activityOptions;
+          tile.goalHours = goalHours || tile.goalHours;
+          tile.goalCycle = goalCycle || tile.goalCycle;
+
+          let updatedTile = await tile.save({new: true});
+          let userTiles = await UserTile.find({ tildId: tileId });
+
+          if (userTiles) {
+            for (let userTile of userTiles) {
+
+              let cycle = await Cycle.create({
+                adminId: decoded.sub,
+                userId: user._id,
+                userName: updatedTile.userName,
+                tileId: updatedTile._id,
+                cycleStartDate: new Date(),
+                cycleLengthInDays: updatedTile.goalCycle,
+                cycleGoalInHours: updatedTile.goalHours,
+                cycleTotalMinutes: 0
+              });
+
+              userTile.userTileName = updatedTile.tileName;
+              userTile.activityOptions = updatedTile.activityOptions;
+              userTile.goalHours = updatedTile.goalHours;
+              userTile.goalCycle = updatedTile.goalCycle;
+              userTile.currentCycleStart = new Date();
+              userTile.cycles = [cycle, ...userTile.cycles];
+              userTile.save();
+            }
+          }
+          res.status(200).send(updatedTile);
+        } else {
+          res.status(403).send('You do not have administrative access to this tile');
         }
       } else {
         res.status(422).send({ error: 'Tile not found'});
@@ -750,109 +531,275 @@ module.exports = {
     }
   },
 
-  // POST /admin/user/:userId/reg/:regId/tile/:tileId
+  // DELETE /admin/tile/:tileId
+  delete_tile: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { tileId } = req.params;
+
+    try {
+      const tile = await Tile.findById(tileId);
+
+      if (tile) {
+        if (tile.adminId == decoded.sub) {
+          Tile.findByIdAndRemove(tileId);
+          UserTile.deleteMany({ tileId: tileId });
+          res.status(200).send(tileId);
+        } else {
+          res.status(403).send('You do not have administrative access to this program');
+        }
+      } else {
+        res.status(422).send({ error: 'Tile not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+
+// MANAGING SPECIFIC USER TILES AND REGIMENS =================================================>>
+
+  // GET /admin/user/program/:userProgramId
+  get_user_program: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { userProgramId } = req.params;
+
+    try {
+      let userProgram = UserProgram.findById(userProgramId);
+
+      if (userProgram) {
+        if (userProgram.adminId === decoded.sub) {
+          res.status(200).send(userProgram);
+        } else {
+          res.status(403).send('You do not have administrative access to this program');
+        }
+      } else {
+        res.status(422).send({ error: 'User not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+  // Gets all userPrograms belonging to this user
+  // GET /admin/user/:userId/programs
+  get_this_user_programs: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { userId } = req.params;
+    const props = req.body;
+
+    try {
+      let user = await User.findById(userId);
+      if (user) {
+        if (user.adminId == decoded.sub) {
+          const userPrograms = await UserProgram.find({ userId: userId });
+          res.status(200).send(userPrograms);
+        } else {
+          res.status(403).send('You do not have administrative access to this program');
+        }
+      } else {
+        res.status(422).send({ error: 'Program not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+  // Get all of the userPrograms that were created with this program
+  // GET /admin/program/:programId/users
+  get_user_programs: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { programId } = req.params;
+    const props = req.body;
+
+    try {
+      let program = await Program.findById({ _id: req.params.programId });
+      if (program) {
+        if (program.adminId == decoded.sub) {
+          const userPrograms = await UserProgram.find({ programId: programId});
+          res.status(200).send(userPrograms);
+        } else {
+          res.status(403).send('You do not have administrative access to this program');
+        }
+      } else {
+        res.status(422).send({ error: 'Program not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+  // GET /admin/user/program/:userProgramId/tiles
+  get_user_program_tiles: async(req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const props = req.body;
+    const { userProgramId } = req.params;
+
+    try {
+      const userProgram = await UserProgram.findById(userProgramId);
+
+      if (userProgram) {
+        if (userProgram.adminId == decoded.sub) {
+          const userTiles = await UserTile.find({ userProgramId: userProgramId }).populate('cycles');
+          res.status(200).send(userTiles);
+        } else {
+          res.status(403).send('You do not have administrative access to this user');
+        }
+      } else {
+        res.status(422).send({ error: 'User program not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+
+  // GET /admin/user/tile/:userTileId
+  get_user_tile: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const props = req.body;
+    const { userTileId } = req.params;
+
+    try {
+      const userTile = await UserTile.findById(userTileId)
+      .populate({
+        path: 'cycles',
+        populate: {
+          path: 'cycleEntries',
+          model: 'entry'
+        }
+      });
+
+      if (userTile) {
+        if (userTile.adminId == decoded.sub) {
+          res.status(200).send(userTile);
+        } else {
+          res.status(403).send('You do not have administrative access to this user');
+        }
+      } else {
+        res.status(422).send({ error: 'User tile not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+  // Gets all user tiles matching a single tile
+  // GET /admin/tile/:tileId/users
+  get_user_tiles: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { tileId } = req.params;
+    const props = req.body;
+
+    try {
+      let tile = await Tile.findById(tileId);
+      if (tile) {
+        if (tile.adminId == decoded.sub) {
+          let userTiles = await UserTile.find({ tileId: tileId});
+          res.status(200).send(userTiles);
+        } else {
+          res.status(403).send('You do not have administrative access to this tile');
+        }
+      } else {
+        res.status(422).send({ error: 'Tile not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+  // POST /admin/user/tile/:userTileId
   add_entry: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
-    const { userId, regId, tileId } = req.params;
+    const { userTileId } = req.params;
     const props = req.body;
-
     if (props.entryDate == undefined) {
       props.entryDate = new Date();
     }
 
-    const entry = {
-      "activity": props.activity,
-      "notes": props.notes,
-      "minutes": props.minutes,
-      "entryDate": props.entryDate
-    }
-
     try {
-      const user = await User.findById(userId).populate('activeUserRegimen');
-      if (user) {
-        // Check if admin has administrative access to this user's account
-        if (user.adminId == decoded.sub) {
+      // const user = await User.findById(userId).populate('activeUserProgram');
+      const userTile = await UserTile.findById(userTileId).populate('cycles');
+      if (userTile) {
+        // Check if admin has administrative access to this user tile
+        if (userTile.adminId == decoded.sub) {
 
-          let admin = await Admin.findById(decoded.sub);
-          let userRegimen = await UserRegimen.findById(regId);
-          let tile = userRegimen.userTiles.find(tile => tile._id == tileId);
-          let cycles = tile.cycles;
+          let cycles = userTile.cycles;
 
           // See if the new entry fits within an existing cycle
           let thisEntryCycle = cycles.find(cycle => {
             let cycleStartDate = moment(cycle.cycleStartDate).startOf('day');
             let cycleEndDate = moment(cycle.cycleEndDate).startOf('day');
-            return moment(entry.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]');
+            if (moment(props.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]')) {
+              return cycleStartDate;
+            } else {
+              return null;
+            }
           });
 
-          // Function that creates new cycles recursively if needed
+          // let admin = await Admin.findById(decoded.sub);
+          let entry = await Entry.create({
+            adminId: decoded.sub,
+            userId: userTile.userId,
+            userName: userTile.userName,
+            userProgramId: userTile.userProgramId,
+            userTileId: userTile._id,
+            activity: props.activity,
+            notes: props.notes,
+            minutes: props.minutes,
+            entryDate: props.entryDate
+          });
+
+          // Creates new cycles if needed
           // Function Start ---------------------------->>
           function createNewCycle(firstCycleStartDate) {
-            // If current date is within most recent cycle
+            // If current date is within most recent cycle, stop creating new cycles
             if (moment(entry.entryDate).isSameOrAfter(firstCycleStartDate)) {
               return;
             } else {
-              let cycleStartDate = moment(firstCycleStartDate).subtract((tile.goalCycle + 1), 'days');
-              let newCycle = {
+              let cycleStartDate = moment(firstCycleStartDate).subtract((userTile.goalCycle + 1), 'days');
+
+              let newCycle = new Cycle({
+                adminId: decoded.sub,
+                userId: userTile.userId,
+                tileId: userTile.tileId,
                 cycleStartDate: cycleStartDate,
-                cycleLengthInDays: tile.goalCycle,
-                cycleGoalInHours: tile.goalHours,
+                cycleLengthInDays: userTile.goalCycle,
+                cycleGoalInHours: userTile.goalHours,
                 cycleTotalMinutes: 0
-              }
+              });
+              cycle.save();
+
               // cycleEndDate and cycleNextDate will be created by Mongoose middleware (see cycle schema)
-              tile.cycles = [...tile.cycles, newCycle];
+              // Add the cycle to the userTile
+              userTile.cycles = [...userTile.cycles, newCycle];
               return createNewCycle(newCycle.cycleStartDate);
             };
           }
           // Function End ---------------------------->>
 
-          // If entry fits in an existing cycle, add the entry
+          // If entry fits in an existing cycle, add the entry and sort them
           if (thisEntryCycle) {
             thisEntryCycle.cycleEntries = [entry, ...thisEntryCycle.cycleEntries];
-          } else {
-            let firstCycleStartDate = tile.cycles[cycles.length-1].cycleStartDate;
-
-            // Create cycles until the new entry fits in one of them
-            createNewCycle(firstCycleStartDate);
-
-            // See if the entry dates fit within an existing cycle
-            thisEntryCycle = tile.cycles.find(cycle => {
-              let cycleStartDate = cycle.cycleStartDate;
-              let cycleEndDate = cycle.cycleEndDate;
-              return moment(entry.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]');
+            thisEntryCycle.cycleEntries = thisEntryCycle.cycleEntries.sort(function(a, b){
+              return b.entryDate == a.entryDate ? 0 : +(b.entryDate > a.entryDate) || -1;
             });
+            thisEntryCycle.save();
 
-            thisEntryCycle.cycleEntries = [entry, ...thisEntryCycle.cycleEntries];
+            // Else create older cycles until the new entry fits in one of them
+          } else {
+            let firstCycleStartDate = userTile.cycles[cycles.length-1].cycleStartDate;
+            createNewCycle(firstCycleStartDate);
           }
 
-          entry.userName = `${user.firstName} ${user.lastName}`;
-          entry.userId = user._id;
-          entry.tileId = tile._id; // user tile id
-          entry.tileName = tile.userTileName;
-
-          admin.recentActivity = [entry, ...admin.recentActivity];
-          if (admin.recentActivity.length > 100) {
-            admin.recentActivity.pop();
-          }
-
-          admin.recentActivity = admin.recentActivity.sort(function(a, b){
-            return b.entryDate == a.entryDate ? 0 : +(b.entryDate > a.entryDate) || -1;
-          });
-
-          // Update the most recent entry for this user
-          user.recentEntry = entry;
-          user.save();
-          admin.save();
-          userRegimen.save();
-
-          // Update the most recent entry for this regimen
-          let regimen = await Regimen.findById(user.activeUserRegimen.fromRegimenId);
-          regimen.recentEntry = entry;
-          regimen.save();
-
-          res.status(200).send(tile);
-
+          res.status(200).send(entry);
         } else {
           res.status(403).send('You do not have administrative access to this user');
         }
@@ -864,22 +811,20 @@ module.exports = {
     }
   },
 
-  // PUT /admin/user/:userId/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId
+  // PUT /admin/user/cycle/:cycleId/entry/:entryId
   update_entry: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
     const props = req.body;
-    const { userId, regId, tileId, cycleId, entryId } = req.params;
+    const { cycleId, entryId } = req.params;
 
     try {
-      const user = await User.findById(userId);
-      if (user) {
-        // Check if admin has administrative access to this user's account
-        if (user.adminId == decoded.sub) {
-          let regimen = await UserRegimen.findById(regId);
-          let tile = regimen.userTiles.find(tile => tile._id == tileId);
-          let cycle = tile.cycles.find(cycle => cycle._id == cycleId);
-          let entry = cycle.cycleEntries.find(entry => entry._id == entryId);
+      const entry = await Entry.findById(entryId);
+
+      if (entry) {
+        if (entry.adminId == decoded.sub) {
+
+          let cycle = await Cycle.findById(cycleId);
 
           entry.entryDate = props.entryDate;
           entry.activity = props.activity;
@@ -889,8 +834,12 @@ module.exports = {
           // keep entries in order
           cycle.cycleEntries = cycle.cycleEntries.sort((a, b) => a.entryDate - a.entryDate);
 
-          regimen.save({new: true});
-          res.status(200).send(tile);
+          // TO DO: Make sure this works if the edited entry belongs in a new cycle
+
+
+          cycle.save();
+          await entry.save();
+          res.status(200).send(entry);
         } else {
           res.status(403).send('You do not have administrative access to this user');
         }
@@ -902,31 +851,22 @@ module.exports = {
     }
   },
 
-  // DELETE /admin/user/:userId/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId
+  // DELETE /admin/user/cycle/:cycleId/entry/:entryId
   delete_entry: async(req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
-    const { userId, regId, tileId, cycleId, entryId } = req.params;
+    const { cycleId, entryId } = req.params;
 
     try {
-      const user = await User.findById(userId);
-      if (user) {
-        // Check if admin has administrative access to this user's account
-        if (user.adminId == decoded.sub) {
-          let regimen = await UserRegimen.findById(regId);
-          let tile = regimen.userTiles.find(tile => tile._id == tileId);
-          let cycle = tile.cycles.find(cycle => cycle._id == cycleId);
-          let entry = cycle.cycleEntries.find(entry => entry._id == entryId);
-          let entryMinutes = entry.minutes;
-
-          cycle.cycleEntries = cycle.cycleEntries.filter(entry => entry._id != entryId);
-
-          cycle.cycleTotalMinutes = cycle.cycleTotalMinutes - entryMinutes;
-          if (cycle.cycleEntries.length == 0) {
-            cycle.color = 0;
-          }
-          await regimen.save();
-          res.status(200).send(tile);
+      const entry = await Entry.findById(entryId);
+      if (entry) {
+        if (entry.adminId == decoded.sub) {
+          const cycle = await Cycle.findById(cycleId);
+          await Entry.findByIdAndRemove(entryId);
+          cycle.cycleEntries.filter(cycleEntry => {
+            return cycleEntry._id !== entryId
+          });
+          res.status(200).send(entryId);
         } else {
         res.status(403).send('You do not have administrative access to this user');
         }
@@ -937,5 +877,4 @@ module.exports = {
       next(err);
     }
   }
-
 }

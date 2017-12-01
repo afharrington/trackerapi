@@ -4,8 +4,8 @@ const moment = require('moment');
 const config = require('../config/keys.js');
 const ExtractJwt = require('passport-jwt').ExtractJwt;
 
-const User = require('../models/User/user_model');
-const UserRegimen = require('../models/UserRegimen/user_regimen_model');
+const User = require('../models/user_model');
+const UserProgram = require('../models/user_program_model');
 
 // ACCOUNT ROUTES ===========================================================>>
 
@@ -18,7 +18,7 @@ module.exports = {
 
     try {
       let user = await User.findById({ _id: decoded.sub })
-      .populate('userRegimens').populate('activeUserRegimen').populate('regimens');
+      .populate('userPrograms').populate('activeUserProgram').populate('programs');
       res.status(200).send(user);
     } catch(err) {
       next(err);
@@ -32,7 +32,7 @@ module.exports = {
     const decoded = jwt.decode(header, config.secret);
 
     try {
-      const user = await User.findById(decoded.sub)  .populate('userRegimens').populate('activeUserRegimen').populate('regimens');
+      const user = await User.findById(decoded.sub)  .populate('userPrograms').populate('activeUserProgram').populate('programs');
 
       user.firstName = req.body.firstName;
       user.lastName = req.body.lastName;
@@ -50,14 +50,14 @@ module.exports = {
 // REGIMEN ROUTES ===========================================================>>
 
   // GET /user
-  get_regimens: async (req, res, next) => {
+  get_programs: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
 
     try {
-      let user = await User.findById({ _id: decoded.sub }).populate('userRegimens');
-      let userRegimens = user.userRegimens;
-      res.status(200).send(userRegimens);
+      let user = await User.findById({ _id: decoded.sub }).populate('userPrograms');
+      let userPrograms = user.userPrograms;
+      res.status(200).send(userPrograms);
     } catch(err) {
       next(err);
     }
@@ -65,17 +65,17 @@ module.exports = {
 
 
   // GET /user/reg/:regId
-  get_regimen: async (req, res, next) => {
+  get_program: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
     const { regId } = req.params;
 
     try {
-      let regimen = await UserRegimen.findById(regId);
-      if (regimen.userId == decoded.sub) {
-        res.status(200).send(regimen);
+      let program = await UserProgram.findById(regId);
+      if (program.userId == decoded.sub) {
+        res.status(200).send(program);
       } else {
-        res.status(403).send('You do not have access to this regimen');
+        res.status(403).send('You do not have access to this program');
       }
     } catch(err) {
       next(err);
@@ -97,10 +97,10 @@ module.exports = {
     }
 
     try {
-      let regimen = await UserRegimen.findById(regId);
-      if (regimen.userId == decoded.sub) {
+      let program = await UserProgram.findById(regId);
+      if (program.userId == decoded.sub) {
 
-        let tile = regimen.userTiles.find(tile => tile._id == tileId);
+        let tile = program.userTiles.find(tile => tile._id == tileId);
         let cycles = tile.cycles;
 
         // See if the entry dates fit within an existing cycle
@@ -163,10 +163,10 @@ module.exports = {
         });
 
         await admin.save();
-        await regimen.save();
+        await program.save();
         res.status(200).send(tile);
       } else {
-        res.status(403).send('You do not have access to this regimen');
+        res.status(403).send('You do not have access to this program');
       }
     } catch(err) {
       next(err);
@@ -181,9 +181,9 @@ module.exports = {
     const { regId, tileId } = req.params;
 
     try {
-      let regimen = await UserRegimen.findById(regId);
-      if (regimen.userId == decoded.sub) {
-        let tile = regimen.userTiles.find(tile => tile._id == tileId);
+      let program = await UserProgram.findById(regId);
+      if (program.userId == decoded.sub) {
+        let tile = program.userTiles.find(tile => tile._id == tileId);
         let recentCycle = tile.cycles[0];
 
         // Recursively create cycles at the set interval, between the most recent cycle and today
@@ -209,7 +209,7 @@ module.exports = {
         }
 
         createNewCycle(recentCycle.cycleNextDate);
-        await regimen.save();
+        await program.save();
         res.status(200).send(tile);
       }
     } catch(err) {
@@ -251,10 +251,10 @@ module.exports = {
     const { regId, tileId, cycleId, entryId } = req.params;
 
     try {
-      let regimen = await UserRegimen.findById(regId);
-      if (regimen.userId == decoded.sub) {
+      let program = await UserProgram.findById(regId);
+      if (program.userId == decoded.sub) {
 
-        let tile = regimen.userTiles.find(tile => tile._id == tileId);
+        let tile = program.userTiles.find(tile => tile._id == tileId);
         let cycle = tile.cycles.find(cycle => cycle._id == cycleId);
         let entry = cycle.cycleEntries.find(entry => entry._id == entryId);
 
@@ -266,7 +266,7 @@ module.exports = {
         // sort entries in order
         cycle.cycleEntries = cycle.cycleEntries.sort((a, b) => a.entryDate - a.entryDate);
 
-        regimen.save({new: true});
+        program.save({new: true});
         res.status(200).send(tile);
       }
     } catch(err) {
@@ -282,10 +282,10 @@ module.exports = {
     const { regId, tileId, cycleId, entryId } = req.params;
 
     try {
-      let regimen = await UserRegimen.findById(regId);
-      if (regimen.userId == decoded.sub) {
+      let program = await UserProgram.findById(regId);
+      if (program.userId == decoded.sub) {
 
-        let tile = regimen.userTiles.find(tile => tile._id == tileId);
+        let tile = program.userTiles.find(tile => tile._id == tileId);
         let cycle = tile.cycles.find(cycle => cycle._id == cycleId);
         let entry = cycle.cycleEntries.find(entry => entry._id == entryId);
         let entryMinutes = entry.minutes;
@@ -298,7 +298,7 @@ module.exports = {
           cycle.color = 0;
         }
 
-        await regimen.save();
+        await program.save();
         res.status(200).send(tile);
       }
     } catch(err) {

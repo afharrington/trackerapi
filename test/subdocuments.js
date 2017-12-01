@@ -1,7 +1,7 @@
 const assert = require('assert');
-const Regimen = require('../models/Regimen/regimen_model');
+const Program = require('../models/Program/program_model');
 
-describe('Regimen subdocuments', () => {
+describe('Program subdocuments', () => {
   xit('can a create a user tile profile subdocument to a new profile', (done) => {
     const profile = new Profile({
       profile_name: 'profile1',

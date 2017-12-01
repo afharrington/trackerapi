@@ -13,11 +13,6 @@ const requireAdminAuth = passport.authenticate('adminJwt', { session: false });
 
 module.exports = function(app) {
 
-  // TEST ROUTES
-  app.post('/test', test.create);
-  app.put('/test/:id', test.edit);
-  app.delete('/test/:id', test.delete);
-
   // AUTHENICATION ROUTES ===================================================>>
 
   app.post('/admin', auth.create_admin);
@@ -31,36 +26,38 @@ module.exports = function(app) {
 
   // ADMIN ROUTES ===========================================================>>
 
+  app.get('/admin/recent', requireAdminAuth, admin.get_recent_entries);
+
   // Managing user accounts
-  app.get('/admin/user', requireAdminAuth, admin.get_all_users);
+  app.get('/admin/users', requireAdminAuth, admin.get_users);
   app.post('/admin/user', requireAdminAuth, admin.create_user);
-  app.get('/admin/user/recent', requireAdminAuth, admin.get_recent_activity);
   app.get('/admin/user/:userId', requireAdminAuth, admin.get_user);
   app.put('/admin/user/:userId', requireAdminAuth, admin.update_user);
   app.delete('/admin/user/:userId', requireAdminAuth, admin.delete_user);
 
-  // Managing regimens
-  app.get('/admin/regimens', requireAdminAuth, admin.get_all_regimens);
-  app.post('/admin/regimen', requireAdminAuth, admin.create_regimen);
-  app.get('/admin/regimen/:regimenId', requireAdminAuth, admin.get_regimen);
-  app.put('/admin/regimen/:regimenId', requireAdminAuth, admin.update_regimen);
-  app.delete('/admin/regimen/:regimenId', requireAdminAuth, admin.delete_regimen);
-  app.get('/admin/regimen/:regimenId/users', requireAdminAuth, admin.get_user_regimens);
+  // Managing programs
+  app.get('/admin/programs', requireAdminAuth, admin.get_programs);
+  app.post('/admin/program', requireAdminAuth, admin.create_program);
+  app.get('/admin/program/:programId', requireAdminAuth, admin.get_program);
+  app.put('/admin/program/:programId', requireAdminAuth, admin.update_program);
+  app.delete('/admin/program/:programId', requireAdminAuth, admin.delete_program);
 
   // Managing tiles
-  app.post('/admin/regimen/:regimenId', requireAdminAuth, admin.create_tile);
-  app.post('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.add_activity);
-  app.put('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.update_tile);
-  app.delete('/admin/regimen/:regimenId/tile/:tileId', requireAdminAuth, admin.delete_tile);
-  app.get('/admin/regimen/:regimenId/tile/:tileId/users', requireAdminAuth, admin.get_user_tiles);
+  app.post('/admin/program/:programId', requireAdminAuth, admin.create_tile);
+  app.put('/admin/tile/:tileId', requireAdminAuth, admin.update_tile);
+  app.delete('/admin/tile/:tileId', requireAdminAuth, admin.delete_tile);
 
-  // Managing specific user tiles and regimens
-  app.get('/admin/user/:userId/reg/:regId/usertile/:userTileId', requireAdminAuth, admin.get_user_tile);
-  app.post('/admin/user/:userId/reg/:regId/tile/:tileId', requireAdminAuth, admin.add_entry);
-  app.put('/admin/user/:userId/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId', requireAdminAuth, admin.update_entry);
-  app.delete('/admin/user/:userId/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId', requireAdminAuth, admin.delete_entry);
-  app.get('/admin/user/:userId/reg/:regId', requireAdminAuth, admin.get_user_regimen);
+  // Managing specific user tiles and programs
+  app.get('/admin/user/program/:userProgramId', requireAdminAuth, admin.get_user_program);
+  app.get('/admin/user/program/:userProgramId/tiles', requireAdminAuth, admin.get_user_program_tiles);
+  app.get('/admin/user/:userId/programs', requireAdminAuth, admin.get_this_user_programs);
+  app.get('/admin/program/:programId/users', requireAdminAuth, admin.get_user_programs);
+  app.get('/admin/user/tile/:userTileId', requireAdminAuth, admin.get_user_tile);
+  app.get('/admin/tile/:tileId/users', requireAdminAuth, admin.get_user_tiles);
 
+  app.post('/admin/user/tile/:userTileId', requireAdminAuth, admin.add_entry);
+  app.put('/admin/user/cycle/:cycleId/entry/:entryId', requireAdminAuth, admin.update_entry);
+  app.delete('/admin/user/cycle/:cycleId/entry/:entryId', requireAdminAuth, admin.delete_entry);
 
 // USER ROUTES ===========================================================>>
 
@@ -68,11 +65,11 @@ module.exports = function(app) {
   app.get('/user', requireUserAuth, user.get_user);
   app.put('/user', user.update_user);
 
-  // Accessing all user regimens
-  // app.get('/user', requireUserAuth, user.get_regimens);
+  // Accessing all user programs
+  // app.get('/user', requireUserAuth, user.get_programs);
 
-  // Accessing specific user regimen with tiles
-  app.get('/user/reg/:regId', requireUserAuth, user.get_regimen);
+  // Accessing specific user program with tiles
+  app.get('/user/reg/:regId', requireUserAuth, user.get_program);
 
   // Updating specific tiles
   app.get('/user/reg/:regId/tile/:tileId', requireUserAuth, user.get_tile);
