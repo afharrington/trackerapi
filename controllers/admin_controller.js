@@ -26,12 +26,7 @@ module.exports = {
     const decoded = jwt.decode(header, config.secret);
 
     try {
-      // let admin = await Admin.findById(decoded.sub);
-      let recentEntries = Entry.find({ adminId: decoded.dub }).sort({ field: entryDate }).limit(100);
-
-      // recentEntries = recentEntries.sort(function(a, b){
-      //   return b.entryDate == a.entryDate ? 0 : +(b.entryDate > a.entryDate) || -1;
-      // });
+      let recentEntries = await Entry.find({ adminId: decoded.sub }).sort({entryDate: -1}).limit(100);
 
       res.status(200).send(recentEntries);
     } catch(err) {
@@ -183,7 +178,7 @@ module.exports = {
           if (props.program != user.activeUserProgram.programId) {
 
             // Look for an existing program that matches the id in the request
-            let existingUserProgram = UserProgram.findOne({ userId: user._id, programId: props.program });
+            let existingUserProgram = await UserProgram.findOne({ userId: user._id, programId: props.program });
 
             // If the program exists, set it to be the active one
             if (existingUserProgram) {
@@ -196,6 +191,7 @@ module.exports = {
               let program = await Program.findById(props.program);
               let tiles = await Tile.find({ programId: program._id });
 
+              let userName = `${user.firstName} ${user.lastName}`;
               // Create a new user program
               let userProgram = await UserProgram.create({
                 adminId: decoded.sub,
@@ -346,6 +342,80 @@ module.exports = {
     }
   },
 
+  // GET /admin/program/:programId/tiles
+  get_program_tiles: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { programId } = req.params;
+
+    try {
+      let program  = await Program.findById(programId);
+
+      if (program) {
+        if (program.adminId === decoded.sub) {
+          let tiles = await Tile.find({ programId: programId });
+          res.status(200).send(tiles);
+        } else {
+          res.status(403).send('You do not have administrative access to this program');
+        }
+      } else {
+        res.status(422).send({ error: 'Program not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+  // Get user tiles from this tile
+  // GET /admin/tile/:tileId/usertiles
+  get_tile_user_tiles: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { tileId } = req.params;
+
+    try {
+      let tile  = await Tile.findById(tileId);
+
+      if (tile) {
+        if (tile.adminId === decoded.sub) {
+          let userTiles = await UserTile.find({ tileId: tileId }).populate('cycles');
+          res.status(200).send(userTiles);
+        } else {
+          res.status(403).send('You do not have administrative access to this program');
+        }
+      } else {
+        res.status(422).send({ error: 'Program not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
+  // Get user tiles from this program
+  // GET /admin/program/:programId/usertiles
+  get_program_user_tiles: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { programId } = req.params;
+
+    try {
+      let program  = await Program.findById(programId);
+
+      if (program) {
+        if (program.adminId === decoded.sub) {
+          let userTiles = await UserTile.find({ programId: programId });
+          res.status(200).send(userTiles);
+        } else {
+          res.status(403).send('You do not have administrative access to this program');
+        }
+      } else {
+        res.status(422).send({ error: 'Program not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
   // Update program (used in the app to update the program's name)
   // PUT /admin/program/:programId
   update_program: async (req, res, next) => {
@@ -476,6 +546,8 @@ module.exports = {
     }
   },
 
+
+
   // PUT /admin/tile/:tileId
   update_tile: async (req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -519,6 +591,7 @@ module.exports = {
               userTile.save();
             }
           }
+
           res.status(200).send(updatedTile);
         } else {
           res.status(403).send('You do not have administrative access to this tile');
@@ -542,9 +615,11 @@ module.exports = {
 
       if (tile) {
         if (tile.adminId == decoded.sub) {
-          Tile.findByIdAndRemove(tileId);
+          const programId = tile.programId;
+          await Tile.findByIdAndRemove(tileId);
           UserTile.deleteMany({ tileId: tileId });
-          res.status(200).send(tileId);
+          const tiles = await Tile.find({ programId: programId });
+          res.status(200).send(tiles);
         } else {
           res.status(403).send('You do not have administrative access to this program');
         }
@@ -632,6 +707,7 @@ module.exports = {
     }
   },
 
+  // Get tiles from this user program
   // GET /admin/user/program/:userProgramId/tiles
   get_user_program_tiles: async(req, res, next) => {
     const header = req.headers.authorization.slice(4);
@@ -656,7 +732,6 @@ module.exports = {
       next(err);
     }
   },
-
 
   // GET /admin/user/tile/:userTileId
   get_user_tile: async (req, res, next) => {
@@ -725,44 +800,48 @@ module.exports = {
     }
 
     try {
-      // const user = await User.findById(userId).populate('activeUserProgram');
       const userTile = await UserTile.findById(userTileId).populate('cycles');
       if (userTile) {
         // Check if admin has administrative access to this user tile
         if (userTile.adminId == decoded.sub) {
-
           let cycles = userTile.cycles;
 
-          // See if the new entry fits within an existing cycle
-          let thisEntryCycle = cycles.find(cycle => {
-            let cycleStartDate = moment(cycle.cycleStartDate).startOf('day');
-            let cycleEndDate = moment(cycle.cycleEndDate).startOf('day');
-            if (moment(props.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]')) {
-              return cycleStartDate;
-            } else {
-              return null;
-            }
-          });
-
-          // let admin = await Admin.findById(decoded.sub);
           let entry = await Entry.create({
             adminId: decoded.sub,
             userId: userTile.userId,
             userName: userTile.userName,
             userProgramId: userTile.userProgramId,
+            userTileName: userTile.userTileName,
             userTileId: userTile._id,
+            tileId: userTile.tileId,
             activity: props.activity,
             notes: props.notes,
             minutes: props.minutes,
             entryDate: props.entryDate
           });
 
+          // See if the new entry fits within an existing cycle
+          function checkForMatchingCycle() {
+            return cycles.find(cycle => {
+              let cycleStartDate = moment(cycle.cycleStartDate).startOf('day');
+              let cycleEndDate = moment(cycle.cycleEndDate).startOf('day');
+
+              if (moment(props.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]')) {
+                return cycle;
+              } else {
+                return null;
+              }
+            });
+          }
+
           // Creates new cycles if needed
           // Function Start ---------------------------->>
           function createNewCycle(firstCycleStartDate) {
-            // If current date is within most recent cycle, stop creating new cycles
+
             if (moment(entry.entryDate).isSameOrAfter(firstCycleStartDate)) {
-              return;
+
+              // Stop creating cycles and return the earliest cycle
+              return userTile.cycles[userTile.cycles.length - 1];
             } else {
               let cycleStartDate = moment(firstCycleStartDate).subtract((userTile.goalCycle + 1), 'days');
 
@@ -775,31 +854,43 @@ module.exports = {
                 cycleGoalInHours: userTile.goalHours,
                 cycleTotalMinutes: 0
               });
-              cycle.save();
+              newCycle.save();
 
               // cycleEndDate and cycleNextDate will be created by Mongoose middleware (see cycle schema)
               // Add the cycle to the userTile
               userTile.cycles = [...userTile.cycles, newCycle];
+              userTile.save();
+
               return createNewCycle(newCycle.cycleStartDate);
             };
           }
           // Function End ---------------------------->>
 
-          // If entry fits in an existing cycle, add the entry and sort them
-          if (thisEntryCycle) {
-            thisEntryCycle.cycleEntries = [entry, ...thisEntryCycle.cycleEntries];
-            thisEntryCycle.cycleEntries = thisEntryCycle.cycleEntries.sort(function(a, b){
+          function addEntryToCycle(cycle) {
+            cycle.cycleEntries = [entry, ...cycle.cycleEntries];
+            cycle.cycleEntries = cycle.cycleEntries.sort(function(a,b) {
               return b.entryDate == a.entryDate ? 0 : +(b.entryDate > a.entryDate) || -1;
             });
-            thisEntryCycle.save();
+            cycle.cycleTotalMinutes = cycle.cycleTotalMinutes += entry.minutes;
+            cycle.save();
+          }
+
+          // First change if the entry fits within an existing cycle
+          let thisEntryCycle = checkForMatchingCycle();
+
+          // If it does, add that cycleId to the entry and create the entry
+          if (thisEntryCycle) {
+            addEntryToCycle(thisEntryCycle);
 
             // Else create older cycles until the new entry fits in one of them
           } else {
             let firstCycleStartDate = userTile.cycles[cycles.length-1].cycleStartDate;
-            createNewCycle(firstCycleStartDate);
+
+            let earliestCycle = createNewCycle(firstCycleStartDate);
+            addEntryToCycle(earliestCycle);
           }
 
-          res.status(200).send(entry);
+          res.status(200).send(userTile);
         } else {
           res.status(403).send('You do not have administrative access to this user');
         }
@@ -824,22 +915,94 @@ module.exports = {
       if (entry) {
         if (entry.adminId == decoded.sub) {
 
-          let cycle = await Cycle.findById(cycleId);
+          const currentCycle = await Cycle.findById(cycleId).populate('cycleEntries');
+          const userTile = await UserTile.findById(entry.userTileId).populate('cycles');
 
+          // Update entry
           entry.entryDate = props.entryDate;
           entry.activity = props.activity;
           entry.notes = props.notes;
           entry.minutes = props.minutes
-
-          // keep entries in order
-          cycle.cycleEntries = cycle.cycleEntries.sort((a, b) => a.entryDate - a.entryDate);
-
-          // TO DO: Make sure this works if the edited entry belongs in a new cycle
-
-
-          cycle.save();
           await entry.save();
-          res.status(200).send(entry);
+
+          // Check if new entry date fits within the existing cycle
+          function checkForMatchingCycle() {
+
+            let thisEntryCycle = userTile.cycles.find(cycle => {
+              let cycleStartDate = moment(cycle.cycleStartDate).startOf('day');
+              let cycleEndDate = moment(cycle.cycleEndDate).startOf('day');
+
+              if (moment(props.entryDate).isBetween(cycleStartDate, cycleEndDate, null, '[]')) {
+                return cycle;
+              } else {
+                return null;
+              }
+            });
+          }
+
+          // Creates new cycles if needed
+          // Function Start ---------------------------->>
+          function createNewCycle(firstCycleStartDate) {
+
+            if (moment(entry.entryDate).isSameOrAfter(firstCycleStartDate)) {
+
+              // Stop creating cycles and return the earliest cycle
+              return userTile.cycles[userTile.cycles.length - 1];
+            } else {
+              let cycleStartDate = moment(firstCycleStartDate).subtract((userTile.goalCycle + 1), 'days');
+
+              let newCycle = new Cycle({
+                adminId: decoded.sub,
+                userId: userTile.userId,
+                tileId: userTile.tileId,
+                cycleStartDate: cycleStartDate,
+                cycleLengthInDays: userTile.goalCycle,
+                cycleGoalInHours: userTile.goalHours,
+                cycleTotalMinutes: 0
+              });
+              newCycle.save();
+
+              // cycleEndDate and cycleNextDate will be created by Mongoose middleware (see cycle schema)
+              // Add the cycle to the userTile
+              userTile.cycles = [...userTile.cycles, newCycle];
+              userTile.save();
+
+              return createNewCycle(newCycle.cycleStartDate);
+            };
+          }
+          // Function End ---------------------------->>
+
+          function addEntryToCycle(cycle) {
+            cycle.cycleTotalMinutes += entry.minutes;
+            cycle.cycleEntries = [entry, ...cycle.cycleEntries];
+            cycle.cycleEntries = cycle.cycleEntries.sort(function(a,b) {
+              return b.entryDate == a.entryDate ? 0 : +(b.entryDate > a.entryDate) || -1;
+            });
+
+            // And remove from current cycle
+            currentCycle.cycleEntries = currentCycle.cycleEntries.filter(cycleEntry => {
+              return (entry._id.toString() !== cycleEntry._id.toString());
+            })
+
+            currentCycle.cycleTotalMinutes -= entry.minutes;
+
+            currentCycle.save();
+            cycle.save();
+          }
+
+          let thisEntryCycle = checkForMatchingCycle();
+
+          if (thisEntryCycle) {
+            addEntryToCycle(thisEntryCycle);
+
+          } else {
+            let firstCycleStartDate = userTile.cycles[userTile.cycles.length-1].cycleStartDate;
+            let earliestCycle = createNewCycle(firstCycleStartDate);
+
+            addEntryToCycle(earliestCycle);
+          }
+
+          res.status(200).send(userTile);
         } else {
           res.status(403).send('You do not have administrative access to this user');
         }
@@ -866,6 +1029,8 @@ module.exports = {
           cycle.cycleEntries.filter(cycleEntry => {
             return cycleEntry._id !== entryId
           });
+          cycle.cycleTotalMinutes = cycle.cycleTotalMinutes -= entry.minutes;
+          await cycle.save();
           res.status(200).send(entryId);
         } else {
         res.status(403).send('You do not have administrative access to this user');

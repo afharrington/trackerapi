@@ -39,13 +39,16 @@ module.exports = function(app) {
   app.get('/admin/programs', requireAdminAuth, admin.get_programs);
   app.post('/admin/program', requireAdminAuth, admin.create_program);
   app.get('/admin/program/:programId', requireAdminAuth, admin.get_program);
+  app.get('/admin/program/:programId/tiles', requireAdminAuth, admin.get_program_tiles);
   app.put('/admin/program/:programId', requireAdminAuth, admin.update_program);
   app.delete('/admin/program/:programId', requireAdminAuth, admin.delete_program);
+  app.get('/admin/program/:programId/usertiles', requireAdminAuth, admin.get_program_user_tiles);
 
   // Managing tiles
   app.post('/admin/program/:programId', requireAdminAuth, admin.create_tile);
   app.put('/admin/tile/:tileId', requireAdminAuth, admin.update_tile);
   app.delete('/admin/tile/:tileId', requireAdminAuth, admin.delete_tile);
+  app.get('/admin/tile/:tileId/usertiles', requireAdminAuth, admin.get_tile_user_tiles);
 
   // Managing specific user tiles and programs
   app.get('/admin/user/program/:userProgramId', requireAdminAuth, admin.get_user_program);

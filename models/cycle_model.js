@@ -5,7 +5,7 @@ const moment = require('moment');
 const cycleSchema = new Schema({
   adminId: String,
   userId: String,
-  tileId: String,
+  tileId: String, // TILE, not userTile!
   // Decide if userTileId and userProgramId should be here, too
   cycleStartDate: { type: Date, default: Date.now },
   cycleEndDate: { type: Date }, // Automatically updated on save
@@ -32,11 +32,13 @@ const cycleSchema = new Schema({
 cycleSchema.pre('save', function(next) {
   // If there are entries, total the minutes, and keep array of entries sorted by date
   if (this.cycleEntries.length !== 0) {
-    let totalMinutes = this.cycleEntries.reduce(function(prev, curr) {
-      return prev + curr['minutes'];
-    }, 0);
-    this.cycleTotalMinutes = totalMinutes;
+    // let totalMinutes = this.cycleEntries.reduce(function(prev, curr) {
+    //   return prev + curr['minutes'];
+    // }, 0);
+    // this.cycleTotalMinutes = totalMinutes;
     this.cycleEntries = this.cycleEntries.sort(function(a,b){return b.entryDate - a.entryDate});
+  } else {
+    this.cycleTotalMinutes = 0;
   }
   // Calculate the cycle's end date and the start date of the next cycle
   this.cycleEndDate = moment(this.cycleStartDate).add(this.cycleLengthInDays, 'days');
