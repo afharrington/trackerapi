@@ -529,7 +529,7 @@ module.exports = {
 
               let cycle = await Cycle.create({
                 adminId: decoded.sub,
-                userId: user._id,
+                userId: userProgram.userId,
                 userName: userName,
                 tileId: tile._id,
                 cycleStartDate: new Date(),
