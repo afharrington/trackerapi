@@ -35,6 +35,29 @@ module.exports = {
     }
   },
 
+  // GET /admin/user/:userId/recent
+  get_recent_user_entries: async (req, res, next) => {
+    const header = req.headers.authorization.slice(4);
+    const decoded = jwt.decode(header, config.secret);
+    const { userId } = req.params;
+
+    try {
+      let user = await User.findById(userId);
+      if (user) {
+        if (user.adminId === decoded.sub) {
+          let recentUserEntries = await Entry.find({ userId: userId }).sort({entryDate: -1}).limit(5);
+          res.status(200).send(recentUserEntries);
+        } else {
+          res.status(403).send('You do not have administrative access to this user');
+        }
+      } else {
+        res.status(422).send({ error: 'User not found'});
+      }
+    } catch(err) {
+      next(err);
+    }
+  },
+
   // Get all users managed by this admin
   // GET /admin/user
   get_users: async (req, res, next) => {
@@ -42,7 +65,7 @@ module.exports = {
     const decoded = jwt.decode(header, config.secret);
 
     try {
-      let users = await User.find({ adminId: decoded.sub }).populate('activeUserProgram');
+      let users = await User.find({ adminId: decoded.sub }).populate('activeUserProgram').populate('recentEntry');
       res.status(200).send(users);
     } catch(err) {
       next(err);
@@ -297,7 +320,7 @@ module.exports = {
     const decoded = jwt.decode(header, config.secret);
 
     try {
-      let programs = await Program.find({ adminId: decoded.sub }).populate('tiles');
+      let programs = await Program.find({ adminId: decoded.sub }).populate('tiles').populate('recentEntry');
       res.status(200).send(programs);
     } catch(err) {
       next(err);
@@ -889,6 +912,28 @@ module.exports = {
             let earliestCycle = createNewCycle(firstCycleStartDate);
             addEntryToCycle(earliestCycle);
           }
+
+
+          let user = await User.findById(userTile.userId);
+          if (user.recentEntry) {
+            if (user.recentEntry.entryDate > entry.entryDate) {
+              user.recentEntry = entry;
+            }
+          } else {
+            user.recentEntry = entry;
+          }
+          user.save();
+
+          let program = await Program.findById(userTile.programId);
+          if (program.recentEntry) {
+            if (program.recentEntry.entryDate > entry.entryDate) {
+              program.recentEntry = entry;
+            }
+          } else {
+            program.recentEntry = entry;
+          }
+          program.save();
+
 
           res.status(200).send(userTile);
         } else {

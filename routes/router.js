@@ -34,6 +34,7 @@ module.exports = function(app) {
   app.get('/admin/user/:userId', requireAdminAuth, admin.get_user);
   app.put('/admin/user/:userId', requireAdminAuth, admin.update_user);
   app.delete('/admin/user/:userId', requireAdminAuth, admin.delete_user);
+  app.get('/admin/user/:userId/recent', requireAdminAuth, admin.get_recent_user_entries);
 
   // Managing programs
   app.get('/admin/programs', requireAdminAuth, admin.get_programs);

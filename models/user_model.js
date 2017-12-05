@@ -18,6 +18,10 @@ const userSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'userProgram'
   },
+  recentEntry: {
+    type: Schema.Types.ObjectId,
+    ref: 'entry'
+  },
   created_date: { type: Date, default: Date.now }
 },{
   toObject: {
