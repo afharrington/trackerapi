@@ -53,7 +53,7 @@ module.exports = function(app) {
 
   // Managing specific user tiles and programs
   app.get('/admin/user/program/:userProgramId', requireAdminAuth, admin.get_user_program);
-  app.get('/admin/user/program/:userProgramId/tiles', requireAdminAuth, admin.get_user_program_tiles);
+  app.get('/admin/user/:userId/tiles', requireAdminAuth, admin.get_active_program_tiles);
   app.get('/admin/user/:userId/programs', requireAdminAuth, admin.get_this_user_programs);
   app.get('/admin/program/:programId/users', requireAdminAuth, admin.get_user_programs);
   app.get('/admin/user/tile/:userTileId', requireAdminAuth, admin.get_user_tile);

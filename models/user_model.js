@@ -7,7 +7,6 @@ const userSchema = new Schema({
   firstName: { type: String, lowercase: true },
   lastName: { type: String, lowercase: true },
   code: String,
-  mobile: String,
   email: {
     type: String,
     lowercase: true },

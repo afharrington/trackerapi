@@ -162,7 +162,7 @@ module.exports = {
     const { userId } = req.params;
 
     try {
-      let user = await User.findById(userId).populate('activeUserProgram');
+      let user = await User.findById(userId).populate('activeUserProgram').populate('recentEntry');
       if (user) {
         if (user.adminId === decoded.sub) {
           res.status(200).send(user);
@@ -540,7 +540,7 @@ module.exports = {
 
               let userTile = new UserTile({
                 adminId: decoded.sub,
-                userId: user._id,
+                userId: userProgram.userId,
                 userName: userName,
                 programId: program._id,
                 tileId: tile._id,
@@ -731,18 +731,19 @@ module.exports = {
   },
 
   // Get tiles from this user program
-  // GET /admin/user/program/:userProgramId/tiles
-  get_user_program_tiles: async(req, res, next) => {
+  // GET /admin/user/:userId/tiles
+  get_active_program_tiles: async(req, res, next) => {
     const header = req.headers.authorization.slice(4);
     const decoded = jwt.decode(header, config.secret);
     const props = req.body;
-    const { userProgramId } = req.params;
+    const { userId } = req.params;
 
     try {
-      const userProgram = await UserProgram.findById(userProgramId);
+      const user = await User.findById(userId).populate('activeUserProgram');
 
-      if (userProgram) {
-        if (userProgram.adminId == decoded.sub) {
+      if (user) {
+        if (user.adminId == decoded.sub) {
+          let userProgramId = user.activeUserProgram._id;
           const userTiles = await UserTile.find({ userProgramId: userProgramId }).populate('cycles');
           res.status(200).send(userTiles);
         } else {
@@ -912,7 +913,6 @@ module.exports = {
             let earliestCycle = createNewCycle(firstCycleStartDate);
             addEntryToCycle(earliestCycle);
           }
-
 
           let user = await User.findById(userTile.userId);
           if (user.recentEntry) {

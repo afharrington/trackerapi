@@ -5,8 +5,8 @@ const userProgramSchema = new Schema({
   userId: String,
   adminId: String,
   programId: String,
-  userProgramName: String,
-  userName: String,
+  userProgramName: { type: String, lowercase: true },
+  userName: { type: String, lowercase: true },
   created_date: { type: Date, default: Date.now }
 },{
   toObject: {

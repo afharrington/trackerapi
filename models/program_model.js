@@ -5,7 +5,7 @@ const programSchema = new Schema({
   adminId: String,
   programName: { type: String, lowercase: true },
   created_date: { type: Date, default: Date.now },
-  sport: String,
+  sport: { type: String, lowercase: true },
   recentEntry: {
     type: Schema.Types.ObjectId,
     ref: 'entry'
