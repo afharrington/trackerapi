@@ -290,15 +290,16 @@ module.exports = {
       if (user) {
         if (user.adminId == decoded.sub) {
 
-          await UserProgram.deleteMany({ userId: userId });
-          await UserTile.deleteMany({ userId: userId });
-          await Cycle.deleteMany({ userId: userId });
-          await Entry.deleteMany({ userId: userId });
+          UserProgram.deleteMany({ userId: userId });
+          UserTile.deleteMany({ userId: userId });
+          Cycle.deleteMany({ userId: userId });
+          Entry.deleteMany({ userId: userId });
 
           // Delete user
           await User.findByIdAndRemove(userId);
 
-          res.status(200).send(userId);
+          const users = await User.find({ adminId: decoded.sub });
+          res.status(200).send(users);
         } else {
           res.status(403).send('You do not have administrative access to this user');
         }
@@ -1046,7 +1047,6 @@ module.exports = {
 
             addEntryToCycle(earliestCycle);
           }
-
           res.status(200).send(userTile);
         } else {
           res.status(403).send('You do not have administrative access to this user');
@@ -1067,6 +1067,8 @@ module.exports = {
 
     try {
       const entry = await Entry.findById(entryId);
+      const userTileId = entry.userTileId;
+
       if (entry) {
         if (entry.adminId == decoded.sub) {
           const cycle = await Cycle.findById(cycleId);
@@ -1075,10 +1077,23 @@ module.exports = {
             return cycleEntry._id !== entryId
           });
           cycle.cycleTotalMinutes = cycle.cycleTotalMinutes -= entry.minutes;
+          if (cycle.cycleTotalMinutes < 0) {
+            cycle.cycleTotalMinutes = 0;
+          }
           await cycle.save();
-          res.status(200).send(entryId);
+
+          const userTile = await UserTile.findById(userTileId)
+            .populate({
+              path: 'cycles',
+              populate: {
+                path: 'cycleEntries',
+                model: 'entry'
+              }
+            });
+
+          res.status(200).send(userTile);
         } else {
-        res.status(403).send('You do not have administrative access to this user');
+        res.status(403).send('You do not have access to this entry');
         }
       } else {
         res.status(422).send({ error: 'User not found'});
@@ -1087,4 +1102,5 @@ module.exports = {
       next(err);
     }
   }
+
 }

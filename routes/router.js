@@ -69,16 +69,13 @@ module.exports = function(app) {
   app.get('/user', requireUserAuth, user.get_user);
   app.put('/user', user.update_user);
 
-  // Accessing all user programs
-  // app.get('/user', requireUserAuth, user.get_programs);
-
-  // Accessing specific user program with tiles
-  app.get('/user/reg/:regId', requireUserAuth, user.get_program);
+  // Accessing user tiles and program
+  app.get('/user', requireUserAuth, user.get_programs);
+  app.get('/user/tiles', requireUserAuth, user.get_active_program_tiles);
 
   // Updating specific tiles
-  app.get('/user/reg/:regId/tile/:tileId', requireUserAuth, user.get_tile);
-  app.post('/user/reg/:regId/tile/:tileId', requireUserAuth, user.add_entry);
-
-  app.put('/user/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId', requireUserAuth, user.update_entry);
-  app.delete('/user/reg/:regId/tile/:tileId/cycle/:cycleId/entry/:entryId', requireUserAuth, user.delete_entry);
+  app.get('/user/tile/:userTileId', requireUserAuth, user.get_user_tile);
+  app.post('/user/tile/:userTileId', requireUserAuth, user.add_entry);
+  app.put('/user/cycle/:cycleId/entry/:entryId', requireUserAuth, user.update_entry);
+  app.delete('/user/cycle/:cycleId/entry/:entryId', requireUserAuth, user.delete_entry);
 }
