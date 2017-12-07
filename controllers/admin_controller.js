@@ -290,10 +290,10 @@ module.exports = {
       if (user) {
         if (user.adminId == decoded.sub) {
 
-          UserProgram.deleteMany({ userId: userId });
-          UserTile.deleteMany({ userId: userId });
-          Cycle.deleteMany({ userId: userId });
-          Entry.deleteMany({ userId: userId });
+          await UserProgram.deleteMany({ userId: userId });
+          await UserTile.deleteMany({ userId: userId });
+          await Cycle.deleteMany({ userId: userId });
+          await Entry.deleteMany({ userId: userId });
 
           // Delete user
           await User.findByIdAndRemove(userId);
